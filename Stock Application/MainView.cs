@@ -36,16 +36,23 @@ namespace Stock_Application
         /// </summary>
         private void initializeWorkers()
         {
-            customerDataWorker.DoWork += CustomerDataWorker_DoWork;
-            customerDataWorker.RunWorkerAsync();
+            Thread thread = new Thread(CustomerDataWorker_DoWork);
+            thread.Start();
         }
 
-        private void CustomerDataWorker_DoWork(object sender, DoWorkEventArgs e)
+        private void CustomerDataWorker_DoWork()
         {
-            while (true)
+            try
             {
                 LstCustomers = loadCustomersFromDB();
+                grdGridCustomers.DataSource = LstCustomers;
+                grdGridCustomers.MasterTemplate.Refresh();
                 Thread.Sleep(5000);
+                Thread thread = new Thread(CustomerDataWorker_DoWork);
+                thread.Start();
+            }
+            catch (Exception)
+            {
             }
         }
 
@@ -63,7 +70,7 @@ namespace Stock_Application
         /// </summary>
         private void setDataBindings()
         {
-            grdGridCustomers.DataSource = LstCustomers;            
+            grdGridCustomers.DataSource = LstCustomers;
         }
 
         /// <summary>
