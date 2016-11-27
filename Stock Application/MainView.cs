@@ -28,7 +28,7 @@ namespace Stock_Application
         {
             InitializeComponent();
             initializeRuntimeData();
-            
+            initializeWorkers();
         }
 
         /// <summary>
