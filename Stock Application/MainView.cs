@@ -37,11 +37,16 @@ namespace Stock_Application
         private void initializeWorkers()
         {
             customerDataWorker.DoWork += CustomerDataWorker_DoWork;
+            customerDataWorker.RunWorkerAsync();
         }
 
         private void CustomerDataWorker_DoWork(object sender, DoWorkEventArgs e)
         {
-            LstCustomers = loadCustomersFromDB();
+            while (true)
+            {
+                LstCustomers = loadCustomersFromDB();
+                Thread.Sleep(5000);
+            }
         }
 
         /// <summary>
