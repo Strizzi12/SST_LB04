@@ -28,9 +28,10 @@
         /// </summary>
         private void InitializeComponent()
         {
-            Telerik.WinControls.UI.TableViewDefinition tableViewDefinition10 = new Telerik.WinControls.UI.TableViewDefinition();
+            Telerik.WinControls.UI.TableViewDefinition tableViewDefinition1 = new Telerik.WinControls.UI.TableViewDefinition();
             this.office2013DarkTheme1 = new Telerik.WinControls.Themes.Office2013DarkTheme();
             this.radCollapsPanel = new Telerik.WinControls.UI.RadCollapsiblePanel();
+            this.grdGridCustomers = new Telerik.WinControls.UI.RadGridView();
             this.btnCreateCustomer = new Telerik.WinControls.UI.RadButton();
             this.txtLastName = new Telerik.WinControls.UI.RadMaskedEditBox();
             this.txtAmount = new Telerik.WinControls.UI.RadMaskedEditBox();
@@ -38,10 +39,11 @@
             this.radLabel3 = new Telerik.WinControls.UI.RadLabel();
             this.radLabel2 = new Telerik.WinControls.UI.RadLabel();
             this.radLabel1 = new Telerik.WinControls.UI.RadLabel();
-            this.grdGridCustomers = new Telerik.WinControls.UI.RadGridView();
             ((System.ComponentModel.ISupportInitialize)(this.radCollapsPanel)).BeginInit();
             this.radCollapsPanel.PanelContainer.SuspendLayout();
             this.radCollapsPanel.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.grdGridCustomers)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.grdGridCustomers.MasterTemplate)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.btnCreateCustomer)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.txtLastName)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.txtAmount)).BeginInit();
@@ -49,8 +51,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.radLabel3)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.radLabel2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.radLabel1)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.grdGridCustomers)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.grdGridCustomers.MasterTemplate)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this)).BeginInit();
             this.SuspendLayout();
             // 
@@ -76,7 +76,7 @@
             this.radCollapsPanel.PanelContainer.Controls.Add(this.radLabel3);
             this.radCollapsPanel.PanelContainer.Controls.Add(this.radLabel2);
             this.radCollapsPanel.PanelContainer.Controls.Add(this.radLabel1);
-            this.radCollapsPanel.PanelContainer.Size = new System.Drawing.Size(0, 979);
+            this.radCollapsPanel.PanelContainer.Size = new System.Drawing.Size(0, 0);
             this.radCollapsPanel.Size = new System.Drawing.Size(42, 981);
             this.radCollapsPanel.TabIndex = 0;
             this.radCollapsPanel.Text = "radCollapsPanel";
@@ -84,6 +84,31 @@
             ((Telerik.WinControls.UI.RadCollapsiblePanelElement)(this.radCollapsPanel.GetChildAt(0))).ExpandDirection = Telerik.WinControls.UI.RadDirection.Right;
             ((Telerik.WinControls.UI.RadCollapsiblePanelElement)(this.radCollapsPanel.GetChildAt(0))).IsExpanded = false;
             ((Telerik.WinControls.UI.RadCollapsiblePanelElement)(this.radCollapsPanel.GetChildAt(0))).AnimationType = Telerik.WinControls.UI.CollapsiblePanelAnimationType.Slide;
+            // 
+            // grdGridCustomers
+            // 
+            this.grdGridCustomers.AutoScroll = true;
+            this.grdGridCustomers.AutoSizeRows = true;
+            this.grdGridCustomers.Location = new System.Drawing.Point(18, 185);
+            // 
+            // 
+            // 
+            this.grdGridCustomers.MasterTemplate.AllowAddNewRow = false;
+            this.grdGridCustomers.MasterTemplate.AllowCellContextMenu = false;
+            this.grdGridCustomers.MasterTemplate.AllowColumnChooser = false;
+            this.grdGridCustomers.MasterTemplate.AllowColumnHeaderContextMenu = false;
+            this.grdGridCustomers.MasterTemplate.AllowColumnReorder = false;
+            this.grdGridCustomers.MasterTemplate.AllowDragToGroup = false;
+            this.grdGridCustomers.MasterTemplate.AllowEditRow = false;
+            this.grdGridCustomers.MasterTemplate.AllowRowHeaderContextMenu = false;
+            this.grdGridCustomers.MasterTemplate.AutoSizeColumnsMode = Telerik.WinControls.UI.GridViewAutoSizeColumnsMode.Fill;
+            this.grdGridCustomers.MasterTemplate.ViewDefinition = tableViewDefinition1;
+            this.grdGridCustomers.Name = "grdGridCustomers";
+            this.grdGridCustomers.Size = new System.Drawing.Size(552, 772);
+            this.grdGridCustomers.TabIndex = 5;
+            this.grdGridCustomers.Text = "radGridView1";
+            this.grdGridCustomers.ThemeName = "Office2013Dark";
+            this.grdGridCustomers.RowsChanging += new Telerik.WinControls.UI.GridViewCollectionChangingEventHandler(this.grdGridCustomers_RowsChanging);
             // 
             // btnCreateCustomer
             // 
@@ -159,36 +184,11 @@
             this.radLabel1.TabIndex = 0;
             this.radLabel1.Text = "Firstname:";
             // 
-            // grdGridCustomers
-            // 
-            this.grdGridCustomers.AutoScroll = true;
-            this.grdGridCustomers.AutoSizeRows = true;
-            this.grdGridCustomers.Location = new System.Drawing.Point(18, 185);
-            // 
-            // 
-            // 
-            this.grdGridCustomers.MasterTemplate.AllowAddNewRow = false;
-            this.grdGridCustomers.MasterTemplate.AllowCellContextMenu = false;
-            this.grdGridCustomers.MasterTemplate.AllowColumnChooser = false;
-            this.grdGridCustomers.MasterTemplate.AllowColumnHeaderContextMenu = false;
-            this.grdGridCustomers.MasterTemplate.AllowColumnReorder = false;
-            this.grdGridCustomers.MasterTemplate.AllowDragToGroup = false;
-            this.grdGridCustomers.MasterTemplate.AllowEditRow = false;
-            this.grdGridCustomers.MasterTemplate.AllowRowHeaderContextMenu = false;
-            this.grdGridCustomers.MasterTemplate.AutoSizeColumnsMode = Telerik.WinControls.UI.GridViewAutoSizeColumnsMode.Fill;
-            this.grdGridCustomers.MasterTemplate.ViewDefinition = tableViewDefinition10;
-            this.grdGridCustomers.Name = "grdGridCustomers";
-            this.grdGridCustomers.Size = new System.Drawing.Size(552, 772);
-            this.grdGridCustomers.TabIndex = 5;
-            this.grdGridCustomers.Text = "radGridView1";
-            this.grdGridCustomers.ThemeName = "Office2013Dark";
-            this.grdGridCustomers.RowsChanging += new Telerik.WinControls.UI.GridViewCollectionChangingEventHandler(this.grdGridCustomers_RowsChanging);
-            // 
             // MainView
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(9F, 20F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1592, 983);
+            this.ClientSize = new System.Drawing.Size(1592, 977);
             this.Controls.Add(this.radCollapsPanel);
             this.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
@@ -203,6 +203,8 @@
             this.radCollapsPanel.PanelContainer.PerformLayout();
             ((System.ComponentModel.ISupportInitialize)(this.radCollapsPanel)).EndInit();
             this.radCollapsPanel.ResumeLayout(false);
+            ((System.ComponentModel.ISupportInitialize)(this.grdGridCustomers.MasterTemplate)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.grdGridCustomers)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.btnCreateCustomer)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.txtLastName)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.txtAmount)).EndInit();
@@ -210,8 +212,6 @@
             ((System.ComponentModel.ISupportInitialize)(this.radLabel3)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.radLabel2)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.radLabel1)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.grdGridCustomers.MasterTemplate)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.grdGridCustomers)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this)).EndInit();
             this.ResumeLayout(false);
 

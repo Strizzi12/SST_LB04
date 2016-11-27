@@ -19,19 +19,37 @@ namespace Stock_Application
         /// </summary>
         public BindingList<Customer> LstCustomers = new BindingList<Customer>();
 
+        /// <summary>
+        /// Updates customer data from server in the background
+        /// </summary>
+        private BackgroundWorker customerDataWorker = new BackgroundWorker();
+
         public MainView()
         {
             InitializeComponent();
             initializeRuntimeData();
+            
         }
-       
+
+        /// <summary>
+        /// Initializes and starts workers
+        /// </summary>
+        private void initializeWorkers()
+        {
+            customerDataWorker.DoWork += CustomerDataWorker_DoWork;
+        }
+
+        private void CustomerDataWorker_DoWork(object sender, DoWorkEventArgs e)
+        {
+            LstCustomers = loadCustomersFromDB();
+        }
+
         /// <summary>
         /// Sets up the runtime data and configuration
         /// </summary>
         private void initializeRuntimeData()
         {
             LstCustomers = loadCustomersFromDB();
-            
             setDataBindings();
         }
 

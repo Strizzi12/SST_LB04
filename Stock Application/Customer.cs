@@ -20,7 +20,8 @@ namespace Stock_Application
         /// <summary>
         /// Required for databinding
         /// </summary>
-        public string GUID {
+        public string GUID
+        {
             get { return prpGUID; }
             set { prpGUID = value; }
         }
