@@ -28,32 +28,6 @@ namespace Stock_Application
         {
             InitializeComponent();
             initializeRuntimeData();
-            initializeWorkers();
-        }
-
-        /// <summary>
-        /// Initializes and starts workers
-        /// </summary>
-        private void initializeWorkers()
-        {
-            Thread thread = new Thread(CustomerDataWorker_DoWork);
-            thread.Start();
-        }
-
-        private void CustomerDataWorker_DoWork()
-        {
-            try
-            {
-                LstCustomers = loadCustomersFromDB();
-                grdGridCustomers.DataSource = LstCustomers;
-                grdGridCustomers.MasterTemplate.Refresh();
-                Thread.Sleep(5000);
-                Thread thread = new Thread(CustomerDataWorker_DoWork);
-                thread.Start();
-            }
-            catch (Exception)
-            {
-            }
         }
 
         /// <summary>
@@ -178,19 +152,24 @@ namespace Stock_Application
         {
             if (e.Action == Telerik.WinControls.Data.NotifyCollectionChangedAction.Remove)
             {
-                try
-                {
-                    //get ID for tupel to delete from database as well
-                    string tmpGuid = grdGridCustomers.CurrentRow.Cells[0].Value.ToString();
 
-                    //delete tupel from database
-                    var filter = Builders<BsonDocument>.Filter.Eq("GUID", tmpGuid);
-                    db_connection.customerTable.DeleteOne(filter);
-                }
-                catch (Exception ex)
+                DialogResult dialogResult = MessageBox.Show("Do you really want to delete this entry?", "Customer deletion", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                if (dialogResult == DialogResult.Yes)
                 {
-                    MessageBox.Show("Unable to delete entry from database.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    Debug.Print(ex.Message);
+                    try
+                    {
+                        //get ID for tupel to delete from database as well
+                        string tmpGuid = grdGridCustomers.CurrentRow.Cells[0].Value.ToString();
+
+                        //delete tupel from database
+                        var filter = Builders<BsonDocument>.Filter.Eq("GUID", tmpGuid);
+                        db_connection.customerTable.DeleteOne(filter);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Unable to delete entry from database.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        Debug.Print(ex.Message);
+                    }
                 }
             }
         }

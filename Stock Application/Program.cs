@@ -16,5 +16,8 @@ namespace Stock_Application
             Application.SetCompatibleTextRenderingDefault(false);
             Application.Run(new MainView());
         }
+
+
+
     }
 }
