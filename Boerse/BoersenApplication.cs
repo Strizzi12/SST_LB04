@@ -7,6 +7,11 @@ using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using MongoDBConnection;
+using MongoDB.Bson;
+using MongoDB.Driver;
+using Newtonsoft.Json;
+using System.IO;
 
 namespace Boerse
 {
@@ -15,31 +20,110 @@ namespace Boerse
 		static void Main(string[] args)
 		{
 			Debug.WriteLine("Started!");
-			using (var server = new RestServer())
+			ServerSettings settings = new ServerSettings();
+			settings.Host = "ec2-35-164-218-97.us-west-2.compute.amazonaws.com";
+			settings.Port = "1234";
+			insertInitialData();
+			try
 			{
-				server.LogToConsole().Start();
+				using(var server = new RestServer(settings))
+				{
+					server.LogToConsole().Start();
+					//New Thread needs to be started, which calculates the market prizes and handles the orders.
+					Console.ReadLine();
+					server.Stop();
+				}
+			}
+			catch(Exception ex)
+			{
+				Console.WriteLine("Error: " + ex);
 				Console.ReadLine();
-				server.Stop();
 			}
 		}
-	}
 
-	[RestResource]
-	public class TestResource
-	{
-		[RestRoute(HttpMethod = Grapevine.Shared.HttpMethod.GET, PathInfo = "/repeat")]
-		public IHttpContext RepeatMe(IHttpContext context)
+		/// <summary>
+		/// This function should insert data into the database
+		/// </summary>
+		private static void insertInitialData()
 		{
-			var word = context.Request.QueryString["word"] ?? "what?";
-			context.Response.SendResponse(word);
-			return context;
-		}
+			string result = string.Empty;
+			Stock stock = new Stock();
+			var dbStocks = dbConnectionStocks._db;
+			var entrys = dbStocks.Find(new BsonDocument()).ToList();
+			foreach(var item in entrys)
+			{
+				stock.aktienID = new Guid(item.GetElement("aktienID").Value.ToString());
+				stock.name = item.GetElement("name").Value.ToString();
+				stock.course = double.Parse(item.GetElement("course").Value.ToString(), System.Globalization.NumberStyles.Any);
+				stock.amount = Int32.Parse(item.GetElement("amount").Value.ToString(), System.Globalization.NumberStyles.Any);
 
-		[RestRoute]
-		public IHttpContext HelloWord(IHttpContext context)
-		{
-			context.Response.SendResponse("Hello World!");
-			return context;
+				result += JsonConvert.SerializeObject(stock);
+			}
+			if(!result.Equals(string.Empty))
+				return;
+
+			var entry = new BsonDocument
+			{
+				{"aktienID", Guid.NewGuid().ToString() },
+				{"name", "Super Firma von Andi"},
+				{"course", 100},
+				{"amount", 1000}
+			};
+			dbConnectionStocks._db.InsertOne(entry);
+
+			var entry2 = new BsonDocument
+			{
+				{"aktienID", Guid.NewGuid().ToString() },
+				{"name", "Super Firma von Mike"},
+				{"course", 100},
+				{"amount", 1000}
+			};
+			dbConnectionStocks._db.InsertOne(entry2);
+
+			var entry3 = new BsonDocument
+			{
+				{"aktienID", Guid.NewGuid().ToString() },
+				{"name", "Super Firma von Bugsdehude"},
+				{"course", 50},
+				{"amount", 1000}
+			};
+			dbConnectionStocks._db.InsertOne(entry3);
+
+			var entry4 = new BsonDocument
+			{
+				{"aktienID", Guid.NewGuid().ToString() },
+				{"name", "Super Firma von Blablub"},
+				{"course", 70},
+				{"amount", 1000}
+			};
+			dbConnectionStocks._db.InsertOne(entry4);
+
+			var entry5 = new BsonDocument
+			{
+				{"aktienID", Guid.NewGuid().ToString() },
+				{"name", "Super Firma von Cyka"},
+				{"course", 10},
+				{"amount", 100}
+			};
+			dbConnectionStocks._db.InsertOne(entry5);
+
+			var entry6 = new BsonDocument
+			{
+				{"aktienID", Guid.NewGuid().ToString() },
+				{"name", "Super Firma von Blyat"},
+				{"course", 15},
+				{"amount", 150}
+			};
+			dbConnectionStocks._db.InsertOne(entry6);
+
+			var entry7 = new BsonDocument
+			{
+				{"aktienID", Guid.NewGuid().ToString() },
+				{"name", "Super Firma von RUSH B"},
+				{"course", 100},
+				{"amount", 1000}
+			};
+			dbConnectionStocks._db.InsertOne(entry7);
 		}
 	}
 }
