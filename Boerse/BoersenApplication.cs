@@ -21,7 +21,8 @@ namespace Boerse
 		{
 			Debug.WriteLine("Started!");
 			ServerSettings settings = new ServerSettings();
-			settings.Host = "ec2-35-164-218-97.us-west-2.compute.amazonaws.com";
+			//settings.Host = "ec2-35-164-218-97.us-west-2.compute.amazonaws.com";    //93.82.35.63 
+			settings.Host = "localhost";    //93.82.35.63 
 			settings.Port = "1234";
 			insertInitialData();
 			try

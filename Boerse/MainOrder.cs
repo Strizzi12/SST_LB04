@@ -18,6 +18,10 @@ namespace Boerse
 			useCase = buy;
 			statusOfOrder = status;
 		}
+
+		public MainOrder()
+		{
+		}
 	}
 
 	public enum BUYORSELL { Buy, Sell }

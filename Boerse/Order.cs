@@ -12,7 +12,7 @@ namespace Boerse
 		public Guid aktienID { get; set; }
 		public int amount { get; set; }
 		public double limit { get; set; }
-		public int timestamp { get; }
-		public string hash { get; }
+		public int timestamp { get; set; }
+		public string hash { get; set; }
 	}
 }

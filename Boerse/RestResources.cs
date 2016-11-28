@@ -1,4 +1,5 @@
 ﻿using Boerse;
+using Grapevine;
 using Grapevine.Interfaces.Server;
 using Grapevine.Server.Attributes;
 using MongoDB.Bson;
@@ -6,8 +7,11 @@ using MongoDB.Bson.Serialization;
 using MongoDB.Driver;
 using MongoDBConnection;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Linq;
 using System;
 using System.Diagnostics;
+using System.Net;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -33,6 +37,8 @@ public class BoersenResource
 	public IHttpContext ListCourses(IHttpContext context)
 	{
 		string stockListAsJsonString = getStockListFromDb();
+		context.Response.ContentType = Grapevine.Shared.ContentType.JSON;
+		context.Response.ContentEncoding = Encoding.UTF8;
 		context.Response.SendResponse(Grapevine.Shared.HttpStatusCode.Ok, stockListAsJsonString);
 		return context;
 	}
@@ -56,38 +62,7 @@ public class BoersenResource
 	[RestRoute(HttpMethod = Grapevine.Shared.HttpMethod.POST, PathInfo = "/boerse/buy")]
 	public IHttpContext Buy(IHttpContext context)
 	{
-		var order = context.Request.QueryString["order"] ?? "what?";
-		if(order == null)
-		{
-			context.Response.SendResponse(Grapevine.Shared.HttpStatusCode.InternalServerError, "Oops, something went wrong!");
-			return context;
-		}
-		Order orderObject = JsonConvert.DeserializeObject<Order>(order);
-		bool isPresent = checkIfStockExists(orderObject);
-		if(isPresent)
-		{
-			//Die Order ins Orderbuch eintragen.
-			try
-			{
-				var dbOrders = dbConnectionOrders._db;
-				MainOrder mainOrder = new MainOrder(orderObject, BUYORSELL.Buy);
-				dbOrders.InsertOne(mainOrder.ToBsonDocument());		//Could be wrong, needs to be tested!
-			}
-			catch(Exception ex)
-			{
-				Debug.WriteLine(ex);
-				context.Response.SendResponse(Grapevine.Shared.HttpStatusCode.InternalServerError, "Oops, something went wrong!");
-				return context;
-			}
-
-			context.Response.SendResponse(Grapevine.Shared.HttpStatusCode.Ok, "Check again with /check");
-			return context;
-		}
-		else
-		{
-			context.Response.SendResponse(Grapevine.Shared.HttpStatusCode.NotFound, "aktienID not found");
-			return context;
-		}
+		return storeInDatabase(context, BUYORSELL.Buy);
 	}
 
 	/// <summary>
@@ -109,13 +84,20 @@ public class BoersenResource
 	[RestRoute(HttpMethod = Grapevine.Shared.HttpMethod.POST, PathInfo = "/boerse/sell")]
 	public IHttpContext Sell(IHttpContext context)
 	{
-		var order = context.Request.QueryString["order"] ?? "what?";
-		if(order == null)
+		return storeInDatabase(context, BUYORSELL.Sell);
+	}
+
+	private IHttpContext storeInDatabase(IHttpContext context, BUYORSELL whatToDo)
+	{
+		string payload = context.Request.Payload.ToString();        //Liefert einen JSON String mit escaped zeichen zurück
+		JToken token = JToken.Parse(payload);
+		JObject json = JObject.Parse(token.ToString());
+		if(payload == null || payload.Equals(""))
 		{
 			context.Response.SendResponse(Grapevine.Shared.HttpStatusCode.InternalServerError, "Oops, something went wrong!");
 			return context;
 		}
-		Order orderObject = JsonConvert.DeserializeObject<Order>(order);
+		Order orderObject = JsonConvert.DeserializeObject<Order>(json.ToString());
 		bool isPresent = checkIfStockExists(orderObject);
 		if(isPresent)
 		{
@@ -123,8 +105,19 @@ public class BoersenResource
 			try
 			{
 				var dbOrders = dbConnectionOrders._db;
-				MainOrder mainOrder = new MainOrder(orderObject, BUYORSELL.Sell);
-				dbOrders.InsertOne(mainOrder.ToBsonDocument());     //Could be wrong, needs to be tested!
+				MainOrder mainOrder = new MainOrder(orderObject, whatToDo);
+				var test = new BsonDocument()
+				{
+					{"orderID", mainOrder.receivedOrder.orderID.ToString()},
+					{"aktienID", mainOrder.receivedOrder.aktienID.ToString()},
+					{"amount", mainOrder.receivedOrder.amount},
+					{"limit", mainOrder.receivedOrder.limit},
+					{"timestamp", mainOrder.receivedOrder.timestamp},
+					{"hash", mainOrder.receivedOrder.hash},
+					{"useCase", mainOrder.useCase},
+					{"statusOfOrder", mainOrder.statusOfOrder}
+				};
+				dbOrders.InsertOne(test);
 			}
 			catch(Exception ex)
 			{
@@ -165,33 +158,60 @@ public class BoersenResource
 	[RestRoute(HttpMethod = Grapevine.Shared.HttpMethod.POST, PathInfo = "/boerse/check")]
 	public IHttpContext Check(IHttpContext context)
 	{
-		var order = context.Request.QueryString["order"] ?? "what?";
-		if(order == null)
+		string payload = context.Request.Payload.ToString();        //Liefert einen JSON String mit escaped zeichen zurück
+		JToken token = JToken.Parse(payload);
+		JObject json = JObject.Parse(token.ToString());
+		if(payload == null || payload.Equals(""))
 		{
 			context.Response.SendResponse(Grapevine.Shared.HttpStatusCode.InternalServerError, "Oops, something went wrong!");
 			return context;
 		}
-		CheckOrder orderObject = JsonConvert.DeserializeObject<CheckOrder>(order);
+		CheckOrder orderObject = JsonConvert.DeserializeObject<CheckOrder>(json.ToString());
 		try
 		{
 			var dbOrders = dbConnectionOrders._db;
 			var entrys = dbOrders.Find(new BsonDocument()).ToList();
 			foreach(var item in entrys)
 			{
-				MainOrder deserializedOrder = BsonSerializer.Deserialize<MainOrder>(item);
-				if(orderObject.orderID.Equals(deserializedOrder.receivedOrder.orderID))
+				MainOrder deserializedOrder = new MainOrder();
+
+				Guid deserializedOrderID = new Guid(item.GetElement("orderID").Value.ToString());
+				Guid deserializedAktienID = new Guid(item.GetElement("aktienID").Value.ToString());
+				int deserializedAmount = Int32.Parse(item.GetElement("amount").Value.ToString(), System.Globalization.NumberStyles.Any);
+				double deserializedLimit = Double.Parse(item.GetElement("limit").Value.ToString(), System.Globalization.NumberStyles.Any);
+				int timestamp = Int32.Parse(item.GetElement("timestamp").Value.ToString(), System.Globalization.NumberStyles.Any);
+				string hash = item.GetElement("hash").Value.ToString();
+				int deserializedUseCase = Int32.Parse(item.GetElement("useCase").Value.ToString(), System.Globalization.NumberStyles.Any);
+				int deserializedStatusOfOrder = Int32.Parse(item.GetElement("statusOfOrder").Value.ToString(), System.Globalization.NumberStyles.Any);
+
+
+				if(orderObject.orderID.Equals(deserializedOrderID))
 				{
 					//Find the current price of the stock
+					double course = 0L;
 					var dbStocks = dbConnectionStocks._db;
-					double course = double.Parse(item.GetElement("course").Value.ToString(), System.Globalization.NumberStyles.Any);
-
+					var stockEntrys = dbStocks.Find(new BsonDocument()).ToList();
+					foreach(var stock in stockEntrys)
+					{
+						Guid aktienID = new Guid(stock.GetElement("aktienID").Value.ToString());
+						if(aktienID.Equals(deserializedAktienID))
+						{
+							course = double.Parse(stock.GetElement("course").Value.ToString(), System.Globalization.NumberStyles.Any);
+							break;
+						}
+					}
+					
 					//Create a Response Order
 					ResponseOrder responseOrder = new ResponseOrder();
-					responseOrder.orderID = deserializedOrder.receivedOrder.orderID;
-					responseOrder.statusOfOrder = deserializedOrder.statusOfOrder;
-					responseOrder.amount = deserializedOrder.receivedOrder.amount;
+					responseOrder.orderID = deserializedOrderID;
+					responseOrder.statusOfOrder = deserializedStatusOfOrder;
+					responseOrder.amount = deserializedAmount;
 					responseOrder.price = course;
 					string response = JsonConvert.SerializeObject(responseOrder);
+
+					//Send back a response
+					context.Response.ContentType = Grapevine.Shared.ContentType.JSON;
+					context.Response.ContentEncoding = Encoding.UTF8;
 					context.Response.SendResponse(Grapevine.Shared.HttpStatusCode.Ok, response);
 					break;
 				}
@@ -274,5 +294,17 @@ public class BoersenResource
 		}
 		return result;
 	}
+
 	#endregion
 }
+
+/* Valid JSON format
+{
+"orderID" : "1bebfc80-dbd8-4d9d-a49d-762a1949d1e7",
+"aktienID" : "1bebfc80-dbd8-4d9d-a49d-762a1949d1e9",
+"amount" : "10",
+"limit" : "50.0",
+"timestamp" : "1480348961", 
+"hash" : ""
+}
+*/
