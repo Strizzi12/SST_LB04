@@ -7,6 +7,7 @@ using MongoDB.Driver;
 using System.Threading;
 using System.ComponentModel;
 using Telerik.WinControls.UI;
+using System.Linq;
 
 namespace Stock_Application
 {
@@ -18,11 +19,6 @@ namespace Stock_Application
         /// This list is loaded and saved at server´s DB for persistency
         /// </summary>
         public BindingList<Customer> LstCustomers = new BindingList<Customer>();
-
-        /// <summary>
-        /// Updates customer data from server in the background
-        /// </summary>
-        private BackgroundWorker customerDataWorker = new BackgroundWorker();
 
         public MainView()
         {
@@ -173,6 +169,76 @@ namespace Stock_Application
                 }
             }
         }
+
+        /// <summary>
+        /// Retrieves clicked rows information and passes it to next tab
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void grdGridCustomers_CellDoubleClick(object sender, GridViewCellEventArgs e)
+        {
+            try
+            {
+                //rowindex -1 is the header of control 
+                if (e.RowIndex != -1 && grdGridCustomers.CurrentCell != null && grdGridCustomers.CurrentRow != null)
+                {
+                    GridViewRowInfo clickedRow = grdGridCustomers.SelectedRows[0];
+                    string tmpGuid = clickedRow.Cells[0].Value.ToString();
+
+                    Customer tmpCustomer = getCustomerByGUID(tmpGuid);
+                    if (tmpCustomer != null)
+                    {
+                        initializeSecondTab(tmpCustomer);
+                    }
+                    else
+                    {
+                        throw new Exception();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.Print(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Gets Customer object from list by its guid
+        /// </summary>
+        /// <param name="tmpGuid"></param>
+        private Customer getCustomerByGUID(string tmpGuid)
+        {
+            var tmpCustomer = from item in LstCustomers
+                              where item.GUID.Equals(tmpGuid)
+                              select item;
+            if (tmpCustomer.Count() > 0)
+            {
+                return tmpCustomer.First();
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Makes initialization steps for the second tab and displays it to the user
+        /// </summary>
+        private void initializeSecondTab(Customer tmpCustomer)
+        {
+            setLabelTexts(tmpCustomer);
+
+            tabControl.SelectedTab = tabPage2;
+        }
+
+        /// <summary>
+        /// Sets the lbls texts according to the double clicked customer from first tab
+        /// </summary>
+        /// <param name="tmpCustomer"></param>
+        private void setLabelTexts(Customer tmpCustomer)
+        {
+            lblGuid.Text = tmpCustomer.GUID;
+            lblLastname.Text = tmpCustomer.Lastname;
+            lblEquity.Text = tmpCustomer.Equity;
+        }
+
 
 
 
