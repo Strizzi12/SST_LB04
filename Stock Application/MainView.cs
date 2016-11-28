@@ -7,6 +7,7 @@ using MongoDB.Driver;
 using System.Threading;
 using System.ComponentModel;
 using Telerik.WinControls.UI;
+using System.Linq;
 
 namespace Stock_Application
 {
@@ -19,41 +20,10 @@ namespace Stock_Application
         /// </summary>
         public BindingList<Customer> LstCustomers = new BindingList<Customer>();
 
-        /// <summary>
-        /// Updates customer data from server in the background
-        /// </summary>
-        private BackgroundWorker customerDataWorker = new BackgroundWorker();
-
         public MainView()
         {
             InitializeComponent();
             initializeRuntimeData();
-            initializeWorkers();
-        }
-
-        /// <summary>
-        /// Initializes and starts workers
-        /// </summary>
-        private void initializeWorkers()
-        {
-            Thread thread = new Thread(CustomerDataWorker_DoWork);
-            thread.Start();
-        }
-
-        private void CustomerDataWorker_DoWork()
-        {
-            try
-            {
-                LstCustomers = loadCustomersFromDB();
-                grdGridCustomers.DataSource = LstCustomers;
-                grdGridCustomers.MasterTemplate.Refresh();
-                Thread.Sleep(5000);
-                Thread thread = new Thread(CustomerDataWorker_DoWork);
-                thread.Start();
-            }
-            catch (Exception)
-            {
-            }
         }
 
         /// <summary>
@@ -178,22 +148,97 @@ namespace Stock_Application
         {
             if (e.Action == Telerik.WinControls.Data.NotifyCollectionChangedAction.Remove)
             {
-                try
-                {
-                    //get ID for tupel to delete from database as well
-                    string tmpGuid = grdGridCustomers.CurrentRow.Cells[0].Value.ToString();
 
-                    //delete tupel from database
-                    var filter = Builders<BsonDocument>.Filter.Eq("GUID", tmpGuid);
-                    db_connection.customerTable.DeleteOne(filter);
-                }
-                catch (Exception ex)
+                DialogResult dialogResult = MessageBox.Show("Do you really want to delete this entry?", "Customer deletion", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                if (dialogResult == DialogResult.Yes)
                 {
-                    MessageBox.Show("Unable to delete entry from database.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    Debug.Print(ex.Message);
+                    try
+                    {
+                        //get ID for tupel to delete from database as well
+                        string tmpGuid = grdGridCustomers.CurrentRow.Cells[0].Value.ToString();
+
+                        //delete tupel from database
+                        var filter = Builders<BsonDocument>.Filter.Eq("GUID", tmpGuid);
+                        db_connection.customerTable.DeleteOne(filter);
+                    }
+                    catch (Exception ex)
+                    {
+                        MessageBox.Show("Unable to delete entry from database.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        Debug.Print(ex.Message);
+                    }
                 }
             }
         }
+
+        /// <summary>
+        /// Retrieves clicked rows information and passes it to next tab
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void grdGridCustomers_CellDoubleClick(object sender, GridViewCellEventArgs e)
+        {
+            try
+            {
+                //rowindex -1 is the header of control 
+                if (e.RowIndex != -1 && grdGridCustomers.CurrentCell != null && grdGridCustomers.CurrentRow != null)
+                {
+                    GridViewRowInfo clickedRow = grdGridCustomers.SelectedRows[0];
+                    string tmpGuid = clickedRow.Cells[0].Value.ToString();
+
+                    Customer tmpCustomer = getCustomerByGUID(tmpGuid);
+                    if (tmpCustomer != null)
+                    {
+                        initializeSecondTab(tmpCustomer);
+                    }
+                    else
+                    {
+                        throw new Exception();
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.Print(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Gets Customer object from list by its guid
+        /// </summary>
+        /// <param name="tmpGuid"></param>
+        private Customer getCustomerByGUID(string tmpGuid)
+        {
+            var tmpCustomer = from item in LstCustomers
+                              where item.GUID.Equals(tmpGuid)
+                              select item;
+            if (tmpCustomer.Count() > 0)
+            {
+                return tmpCustomer.First();
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Makes initialization steps for the second tab and displays it to the user
+        /// </summary>
+        private void initializeSecondTab(Customer tmpCustomer)
+        {
+            setLabelTexts(tmpCustomer);
+
+            tabControl.SelectedTab = tabPage2;
+        }
+
+        /// <summary>
+        /// Sets the lbls texts according to the double clicked customer from first tab
+        /// </summary>
+        /// <param name="tmpCustomer"></param>
+        private void setLabelTexts(Customer tmpCustomer)
+        {
+            lblGuid.Text = tmpCustomer.GUID;
+            lblLastname.Text = tmpCustomer.Lastname;
+            lblEquity.Text = tmpCustomer.Equity;
+        }
+
 
 
 
