@@ -53,12 +53,16 @@ namespace Stock_Application
 
             try
             {
-                var db = db_connection.customerTable.Find(new BsonDocument()).ToList();
+                var customerDB = db_connection.customerTable.Find(new BsonDocument()).ToList();
 
                 //getting values from DB to internal format
-                foreach (var item in db)
+                foreach (var customerItem in customerDB)
                 {
-                    Customer tmpCus = new Customer(item.GetElement("Firstname").Value.ToString(), item.GetElement("Lastname").Value.ToString(), Double.Parse(item.GetElement("Equity").Value.ToString(), System.Globalization.NumberStyles.Any), item.GetElement("GUID").Value.ToString());
+                    //create customer object with loaded data
+                    Customer tmpCus = new Customer(customerItem.GetElement("Firstname").Value.ToString(), customerItem.GetElement("Lastname").Value.ToString(), Double.Parse(customerItem.GetElement("Equity").Value.ToString(), System.Globalization.NumberStyles.Any), customerItem.GetElement("GUID").Value.ToString(), customerItem.GetElement("DepotGuid").Value.ToString());
+
+                    loadSharesForCustomer(tmpCus);
+
                     tmpCusList.Add(tmpCus);
                 }
                 return tmpCusList;
@@ -69,6 +73,25 @@ namespace Stock_Application
                 Debug.Print(ex.Message);
                 return null;
             }
+        }
+
+        /// <summary>
+        /// Loads the shares for a given customer from the DB
+        /// </summary>
+        private Customer loadSharesForCustomer(Customer tmpCus)
+        {
+            //find shares which are associated with the customers depot id
+            var filter = Builders<BsonDocument>.Filter.Eq("DepotGUID", ObjectId.Parse(tmpCus.DepotGuid));
+            var shareDB = db_connection.shareTable.Find(filter).ToList();
+
+            foreach (var shareItem in shareDB)
+            {
+                Share tmpShare = new Share(shareItem.GetElement("GUID").Value.ToString(), shareItem.GetElement("Name").Value.ToString(), shareItem.GetElement("Price").Value.ToString(), shareItem.GetElement("Amount").Value.ToString(), shareItem.GetElement("DepotGUID").Value.ToString());
+
+                tmpCus.Depot.lstShares.Add(tmpShare);
+            }
+
+            return tmpCus;
         }
 
         /// <summary>
@@ -85,7 +108,7 @@ namespace Stock_Application
                 if (Double.Parse(txtAmount.Value.ToString(), System.Globalization.NumberStyles.Any) /*removes space and currency sign*/ >= 0 && txtFirstName.Value.ToString() != string.Empty && txtLastName.Value.ToString() != string.Empty)
                 {
                     //creating customer object with user input
-                    Customer tmpCus = new Customer(txtFirstName.Value.ToString(), txtLastName.Value.ToString(), Double.Parse(txtAmount.Value.ToString(), System.Globalization.NumberStyles.Any), string.Empty);
+                    Customer tmpCus = new Customer(txtFirstName.Value.ToString(), txtLastName.Value.ToString(), Double.Parse(txtAmount.Value.ToString(), System.Globalization.NumberStyles.Any), string.Empty, string.Empty);
 
                     //adding customer object to DB
                     try
@@ -128,7 +151,8 @@ namespace Stock_Application
                 {"GUID", tmpCusObject.GUID},
                 {"Firstname", tmpCusObject.Firstname},
                 {"Lastname", tmpCusObject.Lastname },
-                {"Equity", tmpCusObject.Equity }
+                {"Equity", tmpCusObject.Equity },
+                {"DepotGuid", tmpCusObject.Depot.DepotGuid }
             };
                 await db_connection.customerTable.InsertOneAsync(newEntry);
             }
@@ -148,7 +172,6 @@ namespace Stock_Application
         {
             if (e.Action == Telerik.WinControls.Data.NotifyCollectionChangedAction.Remove)
             {
-
                 DialogResult dialogResult = MessageBox.Show("Do you really want to delete this entry?", "Customer deletion", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
                 if (dialogResult == DialogResult.Yes)
                 {
@@ -166,6 +189,11 @@ namespace Stock_Application
                         MessageBox.Show("Unable to delete entry from database.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         Debug.Print(ex.Message);
                     }
+                }
+                else
+                {
+                    //Cancel current event and follow ups to prevent deletion
+                    e.Cancel = true;
                 }
             }
         }
@@ -208,9 +236,11 @@ namespace Stock_Application
         /// <param name="tmpGuid"></param>
         private Customer getCustomerByGUID(string tmpGuid)
         {
+            //linq query for the customer with given Guid
             var tmpCustomer = from item in LstCustomers
                               where item.GUID.Equals(tmpGuid)
                               select item;
+
             if (tmpCustomer.Count() > 0)
             {
                 return tmpCustomer.First();
@@ -223,8 +253,11 @@ namespace Stock_Application
         /// </summary>
         private void initializeSecondTab(Customer tmpCustomer)
         {
+            //display correct data on tab 2
             setLabelTexts(tmpCustomer);
+            setDepotGridDataSource(tmpCustomer);
 
+            //displaying tab 2
             tabControl.SelectedTab = tabPage2;
         }
 
@@ -239,7 +272,16 @@ namespace Stock_Application
             lblEquity.Text = tmpCustomer.Equity;
         }
 
+        /// <summary>
+        /// Sets the datasource of the Depot datagrid
+        /// </summary>
+        /// <param name="tmpCustomer"></param>
+        private void setDepotGridDataSource(Customer tmpCustomer)
+        {
+            tmpCustomer.Depot.AddShareToDepot(new Share("1","mytestshare","1000", "1", tmpCustomer.DepotGuid));
 
+            grdCustomerDepot.DataSource = tmpCustomer.Depot.lstShares;
+        }
 
 
 

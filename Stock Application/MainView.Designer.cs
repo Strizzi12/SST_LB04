@@ -29,6 +29,7 @@
         private void InitializeComponent()
         {
             Telerik.WinControls.UI.TableViewDefinition tableViewDefinition1 = new Telerik.WinControls.UI.TableViewDefinition();
+            Telerik.WinControls.UI.TableViewDefinition tableViewDefinition2 = new Telerik.WinControls.UI.TableViewDefinition();
             this.office2013DarkTheme1 = new Telerik.WinControls.Themes.Office2013DarkTheme();
             this.tabControl = new System.Windows.Forms.TabControl();
             this.tabPage1 = new System.Windows.Forms.TabPage();
@@ -41,14 +42,17 @@
             this.radLabel2 = new Telerik.WinControls.UI.RadLabel();
             this.radLabel1 = new Telerik.WinControls.UI.RadLabel();
             this.tabPage2 = new System.Windows.Forms.TabPage();
-            this.label1 = new System.Windows.Forms.Label();
-            this.label2 = new System.Windows.Forms.Label();
-            this.label4 = new System.Windows.Forms.Label();
-            this.lblGuid = new System.Windows.Forms.Label();
-            this.lblLastname = new System.Windows.Forms.Label();
-            this.lblEquity = new System.Windows.Forms.Label();
-            this.label3 = new System.Windows.Forms.Label();
             this.label5 = new System.Windows.Forms.Label();
+            this.lblEquity = new System.Windows.Forms.Label();
+            this.lblLastname = new System.Windows.Forms.Label();
+            this.label3 = new System.Windows.Forms.Label();
+            this.lblGuid = new System.Windows.Forms.Label();
+            this.label4 = new System.Windows.Forms.Label();
+            this.label2 = new System.Windows.Forms.Label();
+            this.label1 = new System.Windows.Forms.Label();
+            this.grdCustomerDepot = new Telerik.WinControls.UI.RadGridView();
+            this.btnSellShares = new Telerik.WinControls.UI.RadButton();
+            this.btnBuyShares = new Telerik.WinControls.UI.RadButton();
             this.tabControl.SuspendLayout();
             this.tabPage1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.grdGridCustomers)).BeginInit();
@@ -61,6 +65,10 @@
             ((System.ComponentModel.ISupportInitialize)(this.radLabel2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.radLabel1)).BeginInit();
             this.tabPage2.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.grdCustomerDepot)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.grdCustomerDepot.MasterTemplate)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.btnSellShares)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.btnBuyShares)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this)).BeginInit();
             this.SuspendLayout();
             // 
@@ -116,6 +124,7 @@
             this.grdGridCustomers.TabIndex = 13;
             this.grdGridCustomers.Text = "radGridView1";
             this.grdGridCustomers.ThemeName = "Office2013Dark";
+            this.grdGridCustomers.RowsChanging += new Telerik.WinControls.UI.GridViewCollectionChangingEventHandler(this.grdGridCustomers_RowsChanging);
             this.grdGridCustomers.CellDoubleClick += new Telerik.WinControls.UI.GridViewCellEventHandler(this.grdGridCustomers_CellDoubleClick);
             // 
             // btnCreateCustomer
@@ -201,6 +210,9 @@
             // 
             // tabPage2
             // 
+            this.tabPage2.Controls.Add(this.btnBuyShares);
+            this.tabPage2.Controls.Add(this.btnSellShares);
+            this.tabPage2.Controls.Add(this.grdCustomerDepot);
             this.tabPage2.Controls.Add(this.label5);
             this.tabPage2.Controls.Add(this.lblEquity);
             this.tabPage2.Controls.Add(this.lblLastname);
@@ -217,50 +229,14 @@
             this.tabPage2.Text = "Customer´s Depot";
             this.tabPage2.UseVisualStyleBackColor = true;
             // 
-            // label1
+            // label5
             // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(30, 31);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(92, 32);
-            this.label1.TabIndex = 0;
-            this.label1.Text = "GUID:";
-            // 
-            // label2
-            // 
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(697, 31);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(148, 32);
-            this.label2.TabIndex = 1;
-            this.label2.Text = "Lastname:";
-            // 
-            // label4
-            // 
-            this.label4.AutoSize = true;
-            this.label4.Location = new System.Drawing.Point(1008, 31);
-            this.label4.Name = "label4";
-            this.label4.Size = new System.Drawing.Size(103, 32);
-            this.label4.TabIndex = 3;
-            this.label4.Text = "Equity:";
-            // 
-            // lblGuid
-            // 
-            this.lblGuid.AutoSize = true;
-            this.lblGuid.ForeColor = System.Drawing.SystemColors.ActiveBorder;
-            this.lblGuid.Location = new System.Drawing.Point(30, 77);
-            this.lblGuid.Name = "lblGuid";
-            this.lblGuid.Size = new System.Drawing.Size(0, 32);
-            this.lblGuid.TabIndex = 4;
-            // 
-            // lblLastname
-            // 
-            this.lblLastname.AutoSize = true;
-            this.lblLastname.ForeColor = System.Drawing.SystemColors.ActiveBorder;
-            this.lblLastname.Location = new System.Drawing.Point(697, 77);
-            this.lblLastname.Name = "lblLastname";
-            this.lblLastname.Size = new System.Drawing.Size(0, 32);
-            this.lblLastname.TabIndex = 5;
+            this.label5.AutoSize = true;
+            this.label5.ForeColor = System.Drawing.SystemColors.ActiveBorder;
+            this.label5.Location = new System.Drawing.Point(1010, 73);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(0, 32);
+            this.label5.TabIndex = 7;
             // 
             // lblEquity
             // 
@@ -271,6 +247,15 @@
             this.lblEquity.Size = new System.Drawing.Size(0, 32);
             this.lblEquity.TabIndex = 7;
             // 
+            // lblLastname
+            // 
+            this.lblLastname.AutoSize = true;
+            this.lblLastname.ForeColor = System.Drawing.SystemColors.ActiveBorder;
+            this.lblLastname.Location = new System.Drawing.Point(697, 77);
+            this.lblLastname.Name = "lblLastname";
+            this.lblLastname.Size = new System.Drawing.Size(0, 32);
+            this.lblLastname.TabIndex = 5;
+            // 
             // label3
             // 
             this.label3.AutoSize = true;
@@ -280,20 +265,92 @@
             this.label3.TabIndex = 3;
             this.label3.Text = "Equity:";
             // 
-            // label5
+            // lblGuid
             // 
-            this.label5.AutoSize = true;
-            this.label5.ForeColor = System.Drawing.SystemColors.ActiveBorder;
-            this.label5.Location = new System.Drawing.Point(1010, 73);
-            this.label5.Name = "label5";
-            this.label5.Size = new System.Drawing.Size(0, 32);
-            this.label5.TabIndex = 7;
+            this.lblGuid.AutoSize = true;
+            this.lblGuid.ForeColor = System.Drawing.SystemColors.ActiveBorder;
+            this.lblGuid.Location = new System.Drawing.Point(30, 77);
+            this.lblGuid.Name = "lblGuid";
+            this.lblGuid.Size = new System.Drawing.Size(0, 32);
+            this.lblGuid.TabIndex = 4;
+            // 
+            // label4
+            // 
+            this.label4.AutoSize = true;
+            this.label4.Location = new System.Drawing.Point(1008, 31);
+            this.label4.Name = "label4";
+            this.label4.Size = new System.Drawing.Size(103, 32);
+            this.label4.TabIndex = 3;
+            this.label4.Text = "Equity:";
+            // 
+            // label2
+            // 
+            this.label2.AutoSize = true;
+            this.label2.Location = new System.Drawing.Point(697, 31);
+            this.label2.Name = "label2";
+            this.label2.Size = new System.Drawing.Size(148, 32);
+            this.label2.TabIndex = 1;
+            this.label2.Text = "Lastname:";
+            // 
+            // label1
+            // 
+            this.label1.AutoSize = true;
+            this.label1.Location = new System.Drawing.Point(30, 31);
+            this.label1.Name = "label1";
+            this.label1.Size = new System.Drawing.Size(92, 32);
+            this.label1.TabIndex = 0;
+            this.label1.Text = "GUID:";
+            // 
+            // grdCustomerDepot
+            // 
+            this.grdCustomerDepot.AutoScroll = true;
+            this.grdCustomerDepot.AutoSizeRows = true;
+            this.grdCustomerDepot.Location = new System.Drawing.Point(8, 134);
+            this.grdCustomerDepot.Margin = new System.Windows.Forms.Padding(5);
+            // 
+            // 
+            // 
+            this.grdCustomerDepot.MasterTemplate.AllowAddNewRow = false;
+            this.grdCustomerDepot.MasterTemplate.AllowCellContextMenu = false;
+            this.grdCustomerDepot.MasterTemplate.AllowColumnChooser = false;
+            this.grdCustomerDepot.MasterTemplate.AllowColumnHeaderContextMenu = false;
+            this.grdCustomerDepot.MasterTemplate.AllowColumnReorder = false;
+            this.grdCustomerDepot.MasterTemplate.AllowDragToGroup = false;
+            this.grdCustomerDepot.MasterTemplate.AllowEditRow = false;
+            this.grdCustomerDepot.MasterTemplate.AllowRowHeaderContextMenu = false;
+            this.grdCustomerDepot.MasterTemplate.AutoSizeColumnsMode = Telerik.WinControls.UI.GridViewAutoSizeColumnsMode.Fill;
+            this.grdCustomerDepot.MasterTemplate.ViewDefinition = tableViewDefinition2;
+            this.grdCustomerDepot.Name = "grdCustomerDepot";
+            this.grdCustomerDepot.Size = new System.Drawing.Size(1189, 694);
+            this.grdCustomerDepot.TabIndex = 14;
+            this.grdCustomerDepot.Text = "radGridView1";
+            this.grdCustomerDepot.ThemeName = "Office2013Dark";
+            // 
+            // btnSellShares
+            // 
+            this.btnSellShares.Location = new System.Drawing.Point(693, 838);
+            this.btnSellShares.Margin = new System.Windows.Forms.Padding(5);
+            this.btnSellShares.Name = "btnSellShares";
+            this.btnSellShares.Size = new System.Drawing.Size(247, 52);
+            this.btnSellShares.TabIndex = 15;
+            this.btnSellShares.Text = "Sell selected shares";
+            this.btnSellShares.ThemeName = "Office2013Dark";
+            // 
+            // btnBuyShares
+            // 
+            this.btnBuyShares.Location = new System.Drawing.Point(950, 838);
+            this.btnBuyShares.Margin = new System.Windows.Forms.Padding(5);
+            this.btnBuyShares.Name = "btnBuyShares";
+            this.btnBuyShares.Size = new System.Drawing.Size(247, 52);
+            this.btnBuyShares.TabIndex = 13;
+            this.btnBuyShares.Text = "Buy shares";
+            this.btnBuyShares.ThemeName = "Office2013Dark";
             // 
             // MainView
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(11F, 24F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1235, 957);
+            this.ClientSize = new System.Drawing.Size(1235, 950);
             this.Controls.Add(this.tabControl);
             this.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
@@ -318,6 +375,10 @@
             ((System.ComponentModel.ISupportInitialize)(this.radLabel1)).EndInit();
             this.tabPage2.ResumeLayout(false);
             this.tabPage2.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.grdCustomerDepot.MasterTemplate)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.grdCustomerDepot)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.btnSellShares)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.btnBuyShares)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this)).EndInit();
             this.ResumeLayout(false);
 
@@ -345,5 +406,8 @@
         private System.Windows.Forms.Label lblLastname;
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.Label label3;
+        private Telerik.WinControls.UI.RadGridView grdCustomerDepot;
+        private Telerik.WinControls.UI.RadButton btnBuyShares;
+        private Telerik.WinControls.UI.RadButton btnSellShares;
     }
 }
