@@ -30,6 +30,14 @@
         {
             Telerik.WinControls.UI.TableViewDefinition tableViewDefinition1 = new Telerik.WinControls.UI.TableViewDefinition();
             Telerik.WinControls.UI.TableViewDefinition tableViewDefinition2 = new Telerik.WinControls.UI.TableViewDefinition();
+            Telerik.WinControls.UI.TableViewDefinition tableViewDefinition3 = new Telerik.WinControls.UI.TableViewDefinition();
+            Telerik.WinControls.UI.RadListDataItem radListDataItem1 = new Telerik.WinControls.UI.RadListDataItem();
+            Telerik.WinControls.UI.RadListDataItem radListDataItem2 = new Telerik.WinControls.UI.RadListDataItem();
+            Telerik.WinControls.UI.RadListDataItem radListDataItem3 = new Telerik.WinControls.UI.RadListDataItem();
+            Telerik.WinControls.UI.RadListDataItem radListDataItem4 = new Telerik.WinControls.UI.RadListDataItem();
+            Telerik.WinControls.UI.RadListDataItem radListDataItem5 = new Telerik.WinControls.UI.RadListDataItem();
+            Telerik.WinControls.UI.RadListDataItem radListDataItem6 = new Telerik.WinControls.UI.RadListDataItem();
+            Telerik.WinControls.UI.RadListDataItem radListDataItem7 = new Telerik.WinControls.UI.RadListDataItem();
             this.office2013DarkTheme1 = new Telerik.WinControls.Themes.Office2013DarkTheme();
             this.tabControl = new System.Windows.Forms.TabControl();
             this.tabPage1 = new System.Windows.Forms.TabPage();
@@ -42,6 +50,9 @@
             this.radLabel2 = new Telerik.WinControls.UI.RadLabel();
             this.radLabel1 = new Telerik.WinControls.UI.RadLabel();
             this.tabPage2 = new System.Windows.Forms.TabPage();
+            this.btnBuyShares = new Telerik.WinControls.UI.RadButton();
+            this.btnSellShares = new Telerik.WinControls.UI.RadButton();
+            this.grdCustomerDepot = new Telerik.WinControls.UI.RadGridView();
             this.label5 = new System.Windows.Forms.Label();
             this.lblEquity = new System.Windows.Forms.Label();
             this.lblLastname = new System.Windows.Forms.Label();
@@ -50,9 +61,11 @@
             this.label4 = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
-            this.grdCustomerDepot = new Telerik.WinControls.UI.RadGridView();
-            this.btnSellShares = new Telerik.WinControls.UI.RadButton();
-            this.btnBuyShares = new Telerik.WinControls.UI.RadButton();
+            this.tabPage3 = new System.Windows.Forms.TabPage();
+            this.Trackbar = new Telerik.WinControls.UI.RadTrackBar();
+            this.grdAvailableShares = new Telerik.WinControls.UI.RadGridView();
+            this.radDropDownList1 = new Telerik.WinControls.UI.RadDropDownList();
+            this.label6 = new System.Windows.Forms.Label();
             this.tabControl.SuspendLayout();
             this.tabPage1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.grdGridCustomers)).BeginInit();
@@ -65,10 +78,15 @@
             ((System.ComponentModel.ISupportInitialize)(this.radLabel2)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.radLabel1)).BeginInit();
             this.tabPage2.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.btnBuyShares)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.btnSellShares)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.grdCustomerDepot)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.grdCustomerDepot.MasterTemplate)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.btnSellShares)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.btnBuyShares)).BeginInit();
+            this.tabPage3.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.Trackbar)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.grdAvailableShares)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.grdAvailableShares.MasterTemplate)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.radDropDownList1)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this)).BeginInit();
             this.SuspendLayout();
             // 
@@ -76,6 +94,7 @@
             // 
             this.tabControl.Controls.Add(this.tabPage1);
             this.tabControl.Controls.Add(this.tabPage2);
+            this.tabControl.Controls.Add(this.tabPage3);
             this.tabControl.Location = new System.Drawing.Point(13, 13);
             this.tabControl.Name = "tabControl";
             this.tabControl.SelectedIndex = 0;
@@ -229,6 +248,52 @@
             this.tabPage2.Text = "Customer´s Depot";
             this.tabPage2.UseVisualStyleBackColor = true;
             // 
+            // btnBuyShares
+            // 
+            this.btnBuyShares.Location = new System.Drawing.Point(950, 831);
+            this.btnBuyShares.Margin = new System.Windows.Forms.Padding(5);
+            this.btnBuyShares.Name = "btnBuyShares";
+            this.btnBuyShares.Size = new System.Drawing.Size(247, 52);
+            this.btnBuyShares.TabIndex = 13;
+            this.btnBuyShares.Text = "Buy shares";
+            this.btnBuyShares.ThemeName = "Office2013Dark";
+            this.btnBuyShares.Click += new System.EventHandler(this.btnBuyShares_Click);
+            // 
+            // btnSellShares
+            // 
+            this.btnSellShares.Location = new System.Drawing.Point(693, 831);
+            this.btnSellShares.Margin = new System.Windows.Forms.Padding(5);
+            this.btnSellShares.Name = "btnSellShares";
+            this.btnSellShares.Size = new System.Drawing.Size(247, 52);
+            this.btnSellShares.TabIndex = 15;
+            this.btnSellShares.Text = "Sell selected shares";
+            this.btnSellShares.ThemeName = "Office2013Dark";
+            // 
+            // grdCustomerDepot
+            // 
+            this.grdCustomerDepot.AutoScroll = true;
+            this.grdCustomerDepot.AutoSizeRows = true;
+            this.grdCustomerDepot.Location = new System.Drawing.Point(8, 134);
+            this.grdCustomerDepot.Margin = new System.Windows.Forms.Padding(5);
+            // 
+            // 
+            // 
+            this.grdCustomerDepot.MasterTemplate.AllowAddNewRow = false;
+            this.grdCustomerDepot.MasterTemplate.AllowCellContextMenu = false;
+            this.grdCustomerDepot.MasterTemplate.AllowColumnChooser = false;
+            this.grdCustomerDepot.MasterTemplate.AllowColumnHeaderContextMenu = false;
+            this.grdCustomerDepot.MasterTemplate.AllowColumnReorder = false;
+            this.grdCustomerDepot.MasterTemplate.AllowDragToGroup = false;
+            this.grdCustomerDepot.MasterTemplate.AllowEditRow = false;
+            this.grdCustomerDepot.MasterTemplate.AllowRowHeaderContextMenu = false;
+            this.grdCustomerDepot.MasterTemplate.AutoSizeColumnsMode = Telerik.WinControls.UI.GridViewAutoSizeColumnsMode.Fill;
+            this.grdCustomerDepot.MasterTemplate.ViewDefinition = tableViewDefinition2;
+            this.grdCustomerDepot.Name = "grdCustomerDepot";
+            this.grdCustomerDepot.Size = new System.Drawing.Size(1189, 687);
+            this.grdCustomerDepot.TabIndex = 14;
+            this.grdCustomerDepot.Text = "radGridView1";
+            this.grdCustomerDepot.ThemeName = "Office2013Dark";
+            // 
             // label5
             // 
             this.label5.AutoSize = true;
@@ -301,59 +366,104 @@
             this.label1.TabIndex = 0;
             this.label1.Text = "GUID:";
             // 
-            // grdCustomerDepot
+            // tabPage3
             // 
-            this.grdCustomerDepot.AutoScroll = true;
-            this.grdCustomerDepot.AutoSizeRows = true;
-            this.grdCustomerDepot.Location = new System.Drawing.Point(8, 134);
-            this.grdCustomerDepot.Margin = new System.Windows.Forms.Padding(5);
+            this.tabPage3.Controls.Add(this.Trackbar);
+            this.tabPage3.Controls.Add(this.grdAvailableShares);
+            this.tabPage3.Controls.Add(this.radDropDownList1);
+            this.tabPage3.Controls.Add(this.label6);
+            this.tabPage3.Location = new System.Drawing.Point(4, 33);
+            this.tabPage3.Name = "tabPage3";
+            this.tabPage3.Size = new System.Drawing.Size(1205, 902);
+            this.tabPage3.TabIndex = 2;
+            this.tabPage3.Text = "Create buy order";
+            this.tabPage3.UseVisualStyleBackColor = true;
+            // 
+            // Trackbar
+            // 
+            this.Trackbar.AutoSize = false;
+            this.Trackbar.Location = new System.Drawing.Point(622, 814);
+            this.Trackbar.Name = "Trackbar";
+            this.Trackbar.Size = new System.Drawing.Size(262, 70);
+            this.Trackbar.TabIndex = 16;
+            this.Trackbar.Text = "radTrackBar1";
+            this.Trackbar.ThemeName = "Office2013Dark";
+            // 
+            // grdAvailableShares
+            // 
+            this.grdAvailableShares.AutoScroll = true;
+            this.grdAvailableShares.AutoSizeRows = true;
+            this.grdAvailableShares.Location = new System.Drawing.Point(8, 108);
+            this.grdAvailableShares.Margin = new System.Windows.Forms.Padding(5);
             // 
             // 
             // 
-            this.grdCustomerDepot.MasterTemplate.AllowAddNewRow = false;
-            this.grdCustomerDepot.MasterTemplate.AllowCellContextMenu = false;
-            this.grdCustomerDepot.MasterTemplate.AllowColumnChooser = false;
-            this.grdCustomerDepot.MasterTemplate.AllowColumnHeaderContextMenu = false;
-            this.grdCustomerDepot.MasterTemplate.AllowColumnReorder = false;
-            this.grdCustomerDepot.MasterTemplate.AllowDragToGroup = false;
-            this.grdCustomerDepot.MasterTemplate.AllowEditRow = false;
-            this.grdCustomerDepot.MasterTemplate.AllowRowHeaderContextMenu = false;
-            this.grdCustomerDepot.MasterTemplate.AutoSizeColumnsMode = Telerik.WinControls.UI.GridViewAutoSizeColumnsMode.Fill;
-            this.grdCustomerDepot.MasterTemplate.ViewDefinition = tableViewDefinition2;
-            this.grdCustomerDepot.Name = "grdCustomerDepot";
-            this.grdCustomerDepot.Size = new System.Drawing.Size(1189, 694);
-            this.grdCustomerDepot.TabIndex = 14;
-            this.grdCustomerDepot.Text = "radGridView1";
-            this.grdCustomerDepot.ThemeName = "Office2013Dark";
+            this.grdAvailableShares.MasterTemplate.AllowAddNewRow = false;
+            this.grdAvailableShares.MasterTemplate.AllowCellContextMenu = false;
+            this.grdAvailableShares.MasterTemplate.AllowColumnChooser = false;
+            this.grdAvailableShares.MasterTemplate.AllowColumnHeaderContextMenu = false;
+            this.grdAvailableShares.MasterTemplate.AllowColumnReorder = false;
+            this.grdAvailableShares.MasterTemplate.AllowDragToGroup = false;
+            this.grdAvailableShares.MasterTemplate.AllowEditRow = false;
+            this.grdAvailableShares.MasterTemplate.AllowRowHeaderContextMenu = false;
+            this.grdAvailableShares.MasterTemplate.AutoSizeColumnsMode = Telerik.WinControls.UI.GridViewAutoSizeColumnsMode.Fill;
+            this.grdAvailableShares.MasterTemplate.ViewDefinition = tableViewDefinition3;
+            this.grdAvailableShares.Name = "grdAvailableShares";
+            this.grdAvailableShares.Size = new System.Drawing.Size(1189, 687);
+            this.grdAvailableShares.TabIndex = 15;
+            this.grdAvailableShares.Text = "radGridView1";
+            this.grdAvailableShares.ThemeName = "Office2013Dark";
             // 
-            // btnSellShares
+            // radDropDownList1
             // 
-            this.btnSellShares.Location = new System.Drawing.Point(693, 838);
-            this.btnSellShares.Margin = new System.Windows.Forms.Padding(5);
-            this.btnSellShares.Name = "btnSellShares";
-            this.btnSellShares.Size = new System.Drawing.Size(247, 52);
-            this.btnSellShares.TabIndex = 15;
-            this.btnSellShares.Text = "Sell selected shares";
-            this.btnSellShares.ThemeName = "Office2013Dark";
+            this.radDropDownList1.AutoSize = false;
+            radListDataItem1.Tag = "0";
+            radListDataItem1.Text = "RussiaOrB";
+            radListDataItem2.Tag = "1";
+            radListDataItem2.Text = "Vatikan";
+            radListDataItem3.Tag = "2";
+            radListDataItem3.Text = "Niemansland";
+            radListDataItem4.Tag = "3";
+            radListDataItem4.Text = "Neuseeland";
+            radListDataItem5.Tag = "4";
+            radListDataItem5.Text = "Mexiko";
+            radListDataItem6.Tag = "5";
+            radListDataItem6.Text = "Best Korea";
+            radListDataItem7.Tag = "6";
+            radListDataItem7.Text = "Bhutan";
+            this.radDropDownList1.Items.Add(radListDataItem1);
+            this.radDropDownList1.Items.Add(radListDataItem2);
+            this.radDropDownList1.Items.Add(radListDataItem3);
+            this.radDropDownList1.Items.Add(radListDataItem4);
+            this.radDropDownList1.Items.Add(radListDataItem5);
+            this.radDropDownList1.Items.Add(radListDataItem6);
+            this.radDropDownList1.Items.Add(radListDataItem7);
+            this.radDropDownList1.Location = new System.Drawing.Point(27, 58);
+            this.radDropDownList1.Name = "radDropDownList1";
+            this.radDropDownList1.Size = new System.Drawing.Size(270, 42);
+            this.radDropDownList1.TabIndex = 1;
+            this.radDropDownList1.ThemeName = "Office2013Dark";
+            this.radDropDownList1.SelectedIndexChanged += new Telerik.WinControls.UI.Data.PositionChangedEventHandler(this.radDropDownList1_SelectedIndexChanged);
             // 
-            // btnBuyShares
+            // label6
             // 
-            this.btnBuyShares.Location = new System.Drawing.Point(950, 838);
-            this.btnBuyShares.Margin = new System.Windows.Forms.Padding(5);
-            this.btnBuyShares.Name = "btnBuyShares";
-            this.btnBuyShares.Size = new System.Drawing.Size(247, 52);
-            this.btnBuyShares.TabIndex = 13;
-            this.btnBuyShares.Text = "Buy shares";
-            this.btnBuyShares.ThemeName = "Office2013Dark";
+            this.label6.AutoSize = true;
+            this.label6.Location = new System.Drawing.Point(21, 21);
+            this.label6.Name = "label6";
+            this.label6.Size = new System.Drawing.Size(269, 32);
+            this.label6.TabIndex = 0;
+            this.label6.Text = "Select stock market:";
             // 
             // MainView
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(11F, 24F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1235, 950);
+            this.ClientSize = new System.Drawing.Size(1235, 943);
             this.Controls.Add(this.tabControl);
             this.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
             this.Margin = new System.Windows.Forms.Padding(4, 5, 4, 5);
+            this.MaximizeBox = false;
             this.Name = "MainView";
             // 
             // 
@@ -375,10 +485,16 @@
             ((System.ComponentModel.ISupportInitialize)(this.radLabel1)).EndInit();
             this.tabPage2.ResumeLayout(false);
             this.tabPage2.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.btnBuyShares)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.btnSellShares)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.grdCustomerDepot.MasterTemplate)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.grdCustomerDepot)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.btnSellShares)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.btnBuyShares)).EndInit();
+            this.tabPage3.ResumeLayout(false);
+            this.tabPage3.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.Trackbar)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.grdAvailableShares.MasterTemplate)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.grdAvailableShares)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.radDropDownList1)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this)).EndInit();
             this.ResumeLayout(false);
 
@@ -409,5 +525,10 @@
         private Telerik.WinControls.UI.RadGridView grdCustomerDepot;
         private Telerik.WinControls.UI.RadButton btnBuyShares;
         private Telerik.WinControls.UI.RadButton btnSellShares;
+        private System.Windows.Forms.TabPage tabPage3;
+        private System.Windows.Forms.Label label6;
+        private Telerik.WinControls.UI.RadDropDownList radDropDownList1;
+        private Telerik.WinControls.UI.RadGridView grdAvailableShares;
+        private Telerik.WinControls.UI.RadTrackBar Trackbar;
     }
 }

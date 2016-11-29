@@ -8,6 +8,8 @@ using System.Threading;
 using System.ComponentModel;
 using Telerik.WinControls.UI;
 using System.Linq;
+using Grapevine.Client;
+using Newtonsoft.Json.Linq;
 
 namespace Stock_Application
 {
@@ -19,6 +21,12 @@ namespace Stock_Application
         /// This list is loaded and saved at server´s DB for persistency
         /// </summary>
         public BindingList<Customer> LstCustomers = new BindingList<Customer>();
+
+        /// <summary>
+        /// Holds the available shares of a certain stock
+        /// Depot guid is not assigned because shares are also not assigned to a depot until they get bought
+        /// </summary>
+        public BindingList<Share> LstAvailableSharesOfMarket = new BindingList<Share>();
 
         public MainView()
         {
@@ -61,7 +69,7 @@ namespace Stock_Application
                     //create customer object with loaded data
                     Customer tmpCus = new Customer(customerItem.GetElement("Firstname").Value.ToString(), customerItem.GetElement("Lastname").Value.ToString(), Double.Parse(customerItem.GetElement("Equity").Value.ToString(), System.Globalization.NumberStyles.Any), customerItem.GetElement("GUID").Value.ToString(), customerItem.GetElement("DepotGuid").Value.ToString());
 
-                    loadSharesForCustomer(tmpCus);
+                    tmpCus = loadSharesForCustomer(tmpCus);
 
                     tmpCusList.Add(tmpCus);
                 }
@@ -81,7 +89,7 @@ namespace Stock_Application
         private Customer loadSharesForCustomer(Customer tmpCus)
         {
             //find shares which are associated with the customers depot id
-            var filter = Builders<BsonDocument>.Filter.Eq("DepotGUID", ObjectId.Parse(tmpCus.DepotGuid));
+            var filter = Builders<BsonDocument>.Filter.Eq("DepotGUID", tmpCus.DepotGuid);
             var shareDB = db_connection.shareTable.Find(filter).ToList();
 
             foreach (var shareItem in shareDB)
@@ -90,7 +98,6 @@ namespace Stock_Application
 
                 tmpCus.Depot.lstShares.Add(tmpShare);
             }
-
             return tmpCus;
         }
 
@@ -253,6 +260,10 @@ namespace Stock_Application
         /// </summary>
         private void initializeSecondTab(Customer tmpCustomer)
         {
+            //clear 2nd tab´s datagrid
+            grdCustomerDepot.DataSource = null;
+            grdCustomerDepot.MasterTemplate.Refresh();
+
             //display correct data on tab 2
             setLabelTexts(tmpCustomer);
             setDepotGridDataSource(tmpCustomer);
@@ -278,9 +289,88 @@ namespace Stock_Application
         /// <param name="tmpCustomer"></param>
         private void setDepotGridDataSource(Customer tmpCustomer)
         {
-            tmpCustomer.Depot.AddShareToDepot(new Share("1","mytestshare","1000", "1", tmpCustomer.DepotGuid));
+            //manual add of a share for test purposes
+            //tmpCustomer.Depot.AddShareToDepot(new Share("1","mytestshare","1000", "1", tmpCustomer.DepotGuid));
 
             grdCustomerDepot.DataSource = tmpCustomer.Depot.lstShares;
+        }
+
+        /// <summary>
+        /// Changes user´s view to Tab3 for buying shares of a selected market
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void btnBuyShares_Click(object sender, EventArgs e)
+        {
+            //displaying tab 3
+            tabControl.SelectedTab = tabPage3;
+        }
+
+        /// <summary>
+        /// Gets data from stocks API (available stocks to buy)
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void radDropDownList1_SelectedIndexChanged(object sender, Telerik.WinControls.UI.Data.PositionChangedEventArgs e)
+        {
+            RestClient client = new RestClient();
+            //gets list of urls and ports of the stocks
+            StockURLS STK = new StockURLS();
+
+            //the indizes match so this should work
+            client.Host = STK.URLPORTS[int.Parse(radDropDownList1.SelectedItem.Tag.ToString(),System.Globalization.NumberStyles.Any)].Item1;
+            client.Port = STK.URLPORTS[int.Parse(radDropDownList1.SelectedItem.Tag.ToString(), System.Globalization.NumberStyles.Any)].Item2;
+
+            //request for shares which can be bought currently at a certain stock
+            RestRequest request = new RestRequest("/boerse/listCourses");
+            request.HttpMethod = Grapevine.Shared.HttpMethod.GET;
+
+            //get the Json from server and get the payload from it
+            IRestResponse response = client.Execute(request);
+            string restContent = response.GetContent();
+
+            parseShareData(restContent);
+
+            //reset and assign new datasource of grid to display new data
+            grdAvailableShares.DataSource = null;
+            grdAvailableShares.DataSource = LstAvailableSharesOfMarket;
+        }
+
+        /// <summary>
+        /// Parses the json data form server and generates a local list with this data
+        /// Shares will be generated with no depot id as string: String.Empty to avoid declaring another class this shares
+        /// </summary>
+        /// <param name="restContent"></param>
+        private void parseShareData(string restContent)
+        {
+            //reset list of shares
+            LstAvailableSharesOfMarket = new BindingList<Share>();
+
+            try
+            {
+                //this algorithmn has to be used bc not every group managed to use the correct order of the properties in the json string
+                JArray myStockPriceList = JArray.Parse(restContent);
+                var stockList = new List<Share>();
+                stockList = myStockPriceList.Select(x => new Share((string)x["aktienID"], (string)x["name"], (string)x["course"], (string)x["amount"], "no depot assigned")).ToList();
+
+                LstAvailableSharesOfMarket = new BindingList<Share>(stockList);
+
+                //algorithm relies on correct order of properties and cant be used
+                //JToken token = JToken.Parse(restContent);
+                /*foreach (var item in token)
+                {
+                    Share tmpShare = new Share(item.ElementAt(0).Values().First().ToString(), item.ElementAt(1).Values().First().ToString(), item.ElementAt(2).Values().First().ToString(), item.ElementAt(3).Values().First().ToString(), );
+
+                    LstAvailableSharesOfMarket.Add(tmpShare);
+                }*/
+
+
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("Json format of stock has invalid format. Application is unable to parse Json.", "Parser Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
         }
 
 
