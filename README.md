@@ -1,7 +1,7 @@
 # SST_LB04
 
-ÜbungÜbungÜbungÜbungÜbung
-AktienmarktAktienmarktAktienmarktAktienmarktAktienmarktAktienmarktAktienmarktAktienmarktAktienmarkt Aktienmarkt
+Übung
+Aktienmarkt
 Spezielle Software Technologien
 Wintersemester 2016/17
 Cloud Computing &

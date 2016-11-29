@@ -12,6 +12,7 @@ using MongoDB.Bson;
 using MongoDB.Driver;
 using Newtonsoft.Json;
 using System.IO;
+using System.Threading;
 
 namespace Boerse
 {
@@ -31,6 +32,7 @@ namespace Boerse
 				{
 					server.LogToConsole().Start();
 					//New Thread needs to be started, which calculates the market prizes and handles the orders.
+					Thread myThread = new Thread(new ThreadStart(orderBookOperations));
 					Console.ReadLine();
 					server.Stop();
 				}
@@ -39,6 +41,134 @@ namespace Boerse
 			{
 				Console.WriteLine("Error: " + ex);
 				Console.ReadLine();
+			}
+		}
+
+		static void orderBookOperations()
+		{
+			while(true)
+			{
+				int minutes = 5;
+				Thread.Sleep(1000 * 60 * minutes);
+				//Do work here
+
+				//order the limit
+				//the limit with most verkäufe to given käufe is taken
+				//the one with the lower timestamp gets their full amount, rest is depending on next timestamp and so on.
+				try
+				{
+					//The different MongoDB Tables and their connection.
+					var dbStocks = dbConnectionStocks._db;
+					var stockEntrys = dbStocks.Find(new BsonDocument()).ToList();
+
+					var dbOrders = dbConnectionOrders._db;
+					var OrderEntrys = dbOrders.Find(new BsonDocument()).ToList();
+
+					//Do work for each aktienID
+					foreach(var stock in stockEntrys)
+					{
+						Guid aktienID = new Guid(stock.GetElement("aktienID").Value.ToString());
+						//List for all orders with the current aktienID
+						List<MainOrder> orderList = new List<MainOrder>();
+						foreach(var order in OrderEntrys)
+						{
+							//Check if AktienID is equivalent to current AktienID which is processed.
+							Guid deserializedAktienID = new Guid(order.GetElement("aktienID").Value.ToString());
+							if(aktienID.Equals(deserializedAktienID))
+								continue;
+
+							//Get all entrys in Order-Table and check if Order is "in progress"
+							int deserializedStatusOfOrder = Int32.Parse(order.GetElement("statusOfOrder").Value.ToString(), System.Globalization.NumberStyles.Any);
+							if(deserializedStatusOfOrder != 1)
+								continue;
+
+							//Getting the order from the database
+							Guid deserializedOrderID = new Guid(order.GetElement("orderID").Value.ToString());
+							int deserializedAmount = Int32.Parse(order.GetElement("amount").Value.ToString(), System.Globalization.NumberStyles.Any);
+							double deserializedLimit = Double.Parse(order.GetElement("limit").Value.ToString(), System.Globalization.NumberStyles.Any);
+							int deserializedTimestamp = Int32.Parse(order.GetElement("timestamp").Value.ToString(), System.Globalization.NumberStyles.Any);
+							int deserializedUseCase = Int32.Parse(order.GetElement("useCase").Value.ToString(), System.Globalization.NumberStyles.Any);
+
+							MainOrder mainOrder = new MainOrder();
+							mainOrder.receivedOrder.orderID = deserializedOrderID;
+							mainOrder.receivedOrder.aktienID = deserializedAktienID;
+							mainOrder.receivedOrder.amount = deserializedAmount;
+							mainOrder.receivedOrder.limit = deserializedLimit;
+							mainOrder.receivedOrder.timestamp = deserializedTimestamp;
+							mainOrder.useCase = deserializedUseCase == 0 ? BUYORSELL.Buy : BUYORSELL.Sell;
+							mainOrder.statusOfOrder = deserializedStatusOfOrder;
+
+							orderList.Add(mainOrder);
+						}
+
+						//Look at each order, differentiate each limit (if buy or sell) an add up their amount from the different order.
+						List<KeyVal<double,int, int>> limitList = new List<KeyVal<double, int, int>>();
+						foreach(MainOrder order in orderList)
+						{
+							double limit = order.receivedOrder.limit;
+							int amount = order.receivedOrder.amount;
+							foreach(KeyVal<double, int, int> item in limitList)
+							{
+								//Buy
+								if(order.useCase == 0)
+								{
+									if(item.limit == limit)
+										item.amountBuy += order.receivedOrder.amount;
+									else
+									{
+										KeyVal<double, int, int> newKeyVal = new KeyVal<double, int, int>(limit, order.receivedOrder.amount, 0);
+										limitList.Add(newKeyVal);
+									}
+								}
+								//Sell
+								else
+								{
+									if(item.limit == limit)
+										item.amountSell += order.receivedOrder.amount;
+									else
+									{
+										KeyVal<double, int, int> newKeyVal = new KeyVal<double, int, int>(limit, 0, order.receivedOrder.amount);
+										limitList.Add(newKeyVal);
+									}
+								}
+							}
+						}
+
+						//The market also wants to sell their remaining stocks so this also needs to be taken into account
+						int amountInBoerse = Int32.Parse(stock.GetElement("amount").Value.ToString(), System.Globalization.NumberStyles.Any);
+						double courseInBoerse = Double.Parse(stock.GetElement("course").Value.ToString(), System.Globalization.NumberStyles.Any);
+						foreach(KeyVal<double, int, int> item in limitList)
+						{
+							if(item.limit == courseInBoerse)
+								item.amountSell += amountInBoerse;
+							else
+							{
+								KeyVal<double, int, int> newKeyVal = new KeyVal<double, int, int>(courseInBoerse, 0, amountInBoerse);
+								limitList.Add(newKeyVal);
+							}
+						}
+
+						//Now compare the best amount of buy/sell
+						List<KeyVal<double, int, int>> sortedLimitListBuy = limitList.OrderBy(o => o.limit).ToList();
+
+						//For Memory purposes^^
+						limitList.Clear();
+
+						//Kursfeststellung
+						KeyVal<double, int, int> best = new KeyVal<double, int, int>(0, 0, 0);
+						foreach(var item in sortedLimitListBuy)
+						{
+							if(item.amountSell > item.amountBuy && best.limit < item.limit)
+								best = item;
+						}
+
+						//TODO
+					}
+				}
+				catch(Exception ex)
+				{
+					Debug.WriteLine(ex);
+				}
 			}
 		}
 
@@ -125,6 +255,22 @@ namespace Boerse
 				{"amount", 1000}
 			};
 			dbConnectionStocks._db.InsertOne(entry7);
+		}
+	}
+
+	public class KeyVal<Key, Buy, Sell>
+	{
+		public Key limit { get; set; }
+		public Buy amountBuy { get; set; }
+		public Sell amountSell { get; set; }
+
+		public KeyVal() { }
+
+		public KeyVal(Key key, Buy buy, Sell sell)
+		{
+			limit = key;
+			amountBuy = buy;
+			amountSell = sell;
 		}
 	}
 }
