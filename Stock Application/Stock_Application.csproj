@@ -86,6 +86,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Check.cs" />
     <Compile Include="Customer.cs" />
     <Compile Include="db_connection.cs" />
     <Compile Include="Depot.cs" />

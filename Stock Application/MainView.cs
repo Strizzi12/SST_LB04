@@ -10,6 +10,8 @@ using System.Linq;
 using Grapevine.Client;
 using Newtonsoft.Json.Linq;
 using Grapevine.Shared;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace Stock_Application
 {
@@ -30,14 +32,21 @@ namespace Stock_Application
 
         /// <summary>
         /// Holds the outstanding orders
-        /// Item1 is the orderID, Item2 is the CustomerID which placed the order
+        /// Item1 is the orderID, Item2 is the CustomerID which placed the order, item3 is the host url, item4 is the port as int
+        /// items contain all required information to poll for the respond to an order
+        /// And yes i just dont want to use classes :P
         /// </summary>
-        public List<Tuple<string, string>> LstDueOrders = new List<Tuple<string, string>>();
+        public List<Tuple<string, string, string, int>> LstDueOrders = new List<Tuple<string, string, string, int>>();
 
         /// <summary>
         /// Represents the selected customer from Tab1
         /// </summary>
         public Customer SelectedCustomer = null;
+
+        /// <summary>
+        /// Worker which polls responses for the placed orders
+        /// </summary>
+        private BackgroundWorker responseWorker = new BackgroundWorker();
 
         /// <summary>
         /// Additional inits have to be done here
@@ -47,6 +56,80 @@ namespace Stock_Application
             InitializeComponent();
             initializeRuntimeData();
             initializeTabControl();
+            initializeThreadForResponses();
+        }
+
+        /// <summary>
+        /// Starts worker for polling responses
+        /// </summary>
+        private void initializeThreadForResponses()
+        {
+            responseWorker.DoWork += pollResponses;
+            responseWorker.RunWorkerAsync();
+        }
+
+        /// <summary>
+        /// Polls for responses
+        /// </summary>
+        private void pollResponses(object sender, DoWorkEventArgs e)
+        {
+            while (true)
+            {
+                //List to remove done answered orders
+                List<Tuple<string, string, string, int>> listToRemove = new List<Tuple<string, string, string, int>>();
+
+                foreach (var dueOrderItem in LstDueOrders)
+                {
+                    RestClient client = new RestClient();
+
+                    client.Host = dueOrderItem.Item3.ToString();
+                    client.Port = dueOrderItem.Item4;
+
+                    //request for placing an order
+                    RestRequest request = new RestRequest("/boerse/check");
+                    //https is not supported by this method -> gives error on "Niemansland" stock because this is using https only 
+                    request.HttpMethod = Grapevine.Shared.HttpMethod.POST;
+                    //set payloads format to json
+                    request.ContentType = ContentType.JSON;
+
+                    //generate order object to Json serialize it afterwards
+                    Check tmpOrder = new Check(dueOrderItem.Item1);
+
+                    //generate JSON payload for POST
+                    string tmpPayload = Newtonsoft.Json.JsonConvert.SerializeObject(tmpOrder);
+                    request.Payload = tmpPayload;
+
+                    //send the post request to server
+                    var respond = client.Execute(request);
+
+                    //check if payload has status 0
+
+                    if (respond.StatusCode == HttpStatusCode.Ok)
+                    {
+                        Debug.Print("");
+                        listToRemove.Add(dueOrderItem);
+                    }
+                }
+
+                foreach (var deleteItem in listToRemove)
+                {
+                    removeDueOrder(deleteItem);
+                }
+
+                Thread.Sleep(10000);
+            }
+        }
+
+        /// <summary>
+        /// Removes a due order from local list and DB
+        /// </summary>
+        /// <param name="itemToRemove"></param>
+        private void removeDueOrder(Tuple<string, string, string, int> itemToRemove)
+        {
+            LstDueOrders.Remove(itemToRemove);
+
+            var filter = Builders<BsonDocument>.Filter.Eq("OrderGuid", itemToRemove.Item1);
+            db_connection.dueOrderTable.DeleteOne(filter);
         }
 
         /// <summary>
@@ -73,9 +156,9 @@ namespace Stock_Application
         /// <summary>
         /// Initial load of due orders from DB
         /// </summary>
-        private List<Tuple<string, string>> loadDueOrdersFromDB()
+        private List<Tuple<string, string, string, int>> loadDueOrdersFromDB()
         {
-            List<Tuple<string, string>> tmpDueOrderList = new List<Tuple<string, string>>();
+            List<Tuple<string, string, string, int>> tmpDueOrderList = new List<Tuple<string, string, string, int>>();
 
             try
             {
@@ -84,7 +167,7 @@ namespace Stock_Application
                 //getting values from DB to internal format
                 foreach (var dueOrderItem in dueOrderDB)
                 {
-                    tmpDueOrderList.Add(new Tuple<string, string>(dueOrderItem.GetElement("OrderGuid").Value.ToString(), dueOrderItem.GetElement("CustomerGuid").Value.ToString()));
+                    tmpDueOrderList.Add(new Tuple<string, string, string, int>(dueOrderItem.GetElement("OrderGuid").Value.ToString(), dueOrderItem.GetElement("CustomerGuid").Value.ToString(), dueOrderItem.GetElement("Host").Value.ToString(), int.Parse(dueOrderItem.GetElement("Port").Value.ToString(), System.Globalization.NumberStyles.Any)));
                 }
             }
             catch (Exception)
@@ -550,15 +633,55 @@ namespace Stock_Application
                 MessageBox.Show("Order was succusfully placed at server´s stock.", "Order placed.", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                 //if placing the order was successful the order has to be stored for the client application
-                addDueOrderItem(new Tuple<string, string>(tmpOrder.orderID.ToString(), tmpCustomer.GUID));
+                addDueOrderItem(new Tuple<string, string, string, int>(tmpOrder.orderID.ToString(), tmpCustomer.GUID, tmpHost, tmpPort));
+
+                //negative because the customer now has less money available
+                setCustomersEquityByGuid(tmpCustomer.GUID, (-1 * tmpAmount * tmpMaxBuyValue));
             }
             resetTab3Controls();
         }
 
         /// <summary>
+        /// Sets the customer´s equity depending on the change value
+        /// No check for valid values; has to be done before
+        /// </summary>
+        /// <param name="customerGuid"></param>
+        /// <param name="changeEquity">+ if customers gained money, - if he lost money</param>
+        private void setCustomersEquityByGuid(string customerGuid, double changeEquity)
+        {
+            var tmpCustomer = from item in LstCustomers
+                              where item.GUID.Equals(customerGuid)
+                              select item;
+            if (tmpCustomer.Count() > 0)
+            {
+                //get current equity of customer
+                double tmpEquity = double.Parse((tmpCustomer.First() as Customer).Equity, System.Globalization.NumberStyles.Any);
+                tmpEquity += changeEquity;
+
+                (tmpCustomer.First() as Customer).Equity = tmpEquity.ToString();
+
+                updateCustomerInDB(tmpCustomer.First() as Customer);
+
+                //so the changed data will be visible on gui as well
+                setLabelTexts(tmpCustomer.First() as Customer);
+            }
+        }
+
+        /// <summary>
+        /// Updates a customer´s equity by its guid
+        /// </summary>
+        private async void updateCustomerInDB(Customer tmpCustomer)
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("GUID", tmpCustomer.GUID);
+            var update = Builders<BsonDocument>.Update
+                .Set("Equity", tmpCustomer.Equity);
+            var result = await db_connection.customerTable.UpdateOneAsync(filter, update);
+        }
+
+        /// <summary>
         /// Adds a new due order to local list and DB
         /// </summary>
-        private async void addDueOrderItem(Tuple<string, string> tmpTuple)
+        private async void addDueOrderItem(Tuple<string, string, string, int> tmpTuple)
         {
             //add it to local list
             LstDueOrders.Add(tmpTuple);
@@ -568,7 +691,9 @@ namespace Stock_Application
                 BsonDocument newEntry = new BsonDocument
             {
                 {"OrderGuid", tmpTuple.Item1 },
-                {"CustomerGuid", tmpTuple.Item2 }
+                {"CustomerGuid", tmpTuple.Item2 },
+                {"Host", tmpTuple.Item3 },
+                {"Port", tmpTuple.Item4 }
             };
                 await db_connection.dueOrderTable.InsertOneAsync(newEntry);
             }
