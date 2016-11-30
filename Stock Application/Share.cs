@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace Stock_Application
+﻿namespace Stock_Application
 {
     /// <summary>
     /// Represents a share of the market which can be bought and sold by a trade on the stock market

@@ -18,5 +18,6 @@ namespace Stock_Application
         private static IMongoDatabase dbtemp = Client.GetDatabase("ClientDBS");
         public static IMongoCollection<BsonDocument> customerTable = dbtemp.GetCollection<BsonDocument>("CustomerTBL");
         public static IMongoCollection<BsonDocument> shareTable = dbtemp.GetCollection<BsonDocument>("SharesTBL");
+        public static IMongoCollection<BsonDocument> dueOrderTable = dbtemp.GetCollection<BsonDocument>("DueOrderTBL");
     }
 }

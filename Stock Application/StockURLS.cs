@@ -1,17 +1,19 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Stock_Application
 {
     public class StockURLS
     {
-        public List<Tuple<string, int>> URLPORTS = new List<Tuple<string, int>>();
+        public List<Tuple<string, int>> URLPORTS = null;
 
+        /// <summary>
+        /// Not nice but makes life easier
+        /// </summary>
         public StockURLS()
         {
+            URLPORTS = new List<Tuple<string, int>>();
+
             Tuple<string, int> RussiAOrB = new Tuple<string, int>("ec2-35-164-218-97.us-west-2.compute.amazonaws.com", 1234);
             Tuple<string, int> Vatikan = new Tuple<string, int>("ec2-54-93-94-230.eu-central-1.compute.amazonaws.com", 80);
             Tuple<string, int> Niemandsland = new Tuple<string, int>("boerse.pwnhofer.at", 443);

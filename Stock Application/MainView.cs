@@ -4,12 +4,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Windows.Forms;
 using MongoDB.Driver;
-using System.Threading;
 using System.ComponentModel;
 using Telerik.WinControls.UI;
 using System.Linq;
 using Grapevine.Client;
 using Newtonsoft.Json.Linq;
+using Grapevine.Shared;
 
 namespace Stock_Application
 {
@@ -28,10 +28,36 @@ namespace Stock_Application
         /// </summary>
         public BindingList<Share> LstAvailableSharesOfMarket = new BindingList<Share>();
 
+        /// <summary>
+        /// Holds the outstanding orders
+        /// Item1 is the orderID, Item2 is the CustomerID which placed the order
+        /// </summary>
+        public List<Tuple<string, string>> LstDueOrders = new List<Tuple<string, string>>();
+
+        /// <summary>
+        /// Represents the selected customer from Tab1
+        /// </summary>
+        public Customer SelectedCustomer = null;
+
+        /// <summary>
+        /// Additional inits have to be done here
+        /// </summary>
         public MainView()
         {
             InitializeComponent();
             initializeRuntimeData();
+            initializeTabControl();
+        }
+
+        /// <summary>
+        /// Winfroms TabControl has a strange behaviour for disabling Tabpages so it is programatically
+        /// </summary>
+        private void initializeTabControl()
+        {
+            for (int i = 1; i < tabControl.TabPages.Count; i++)
+            {
+                (tabControl.TabPages[i] as Control).Enabled = false;
+            }
         }
 
         /// <summary>
@@ -40,7 +66,33 @@ namespace Stock_Application
         private void initializeRuntimeData()
         {
             LstCustomers = loadCustomersFromDB();
+            LstDueOrders = loadDueOrdersFromDB();
             setDataBindings();
+        }
+
+        /// <summary>
+        /// Initial load of due orders from DB
+        /// </summary>
+        private List<Tuple<string, string>> loadDueOrdersFromDB()
+        {
+            List<Tuple<string, string>> tmpDueOrderList = new List<Tuple<string, string>>();
+
+            try
+            {
+                var dueOrderDB = db_connection.dueOrderTable.Find(new BsonDocument()).ToList();
+
+                //getting values from DB to internal format
+                foreach (var dueOrderItem in dueOrderDB)
+                {
+                    tmpDueOrderList.Add(new Tuple<string, string>(dueOrderItem.GetElement("OrderGuid").Value.ToString(), dueOrderItem.GetElement("CustomerGuid").Value.ToString()));
+                }
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("Unable to load due orders from server´s DB.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return null;
+            }
+            return tmpDueOrderList;
         }
 
         /// <summary>
@@ -224,6 +276,8 @@ namespace Stock_Application
                     if (tmpCustomer != null)
                     {
                         initializeSecondTab(tmpCustomer);
+
+                        setSelectedCustomer(tmpCustomer);
                     }
                     else
                     {
@@ -234,6 +288,29 @@ namespace Stock_Application
             catch (Exception ex)
             {
                 Debug.Print(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Sets the selected Customer and enables tabs
+        /// </summary>
+        /// <param name="tmpCustomer"></param>
+        private void setSelectedCustomer(Customer tmpCustomer)
+        {
+            SelectedCustomer = tmpCustomer;
+
+            //enable tabs after a customer was selected (before that it would make no sense to go to one of the other Tabs)
+            enableTabs();
+        }
+
+        /// <summary>
+        /// Enables other Tabs of Tabcontrol
+        /// </summary>
+        private void enableTabs()
+        {
+            foreach (var item in tabControl.TabPages)
+            {
+                (item as Control).Enabled = true;
             }
         }
 
@@ -313,27 +390,36 @@ namespace Stock_Application
         /// <param name="e"></param>
         private void radDropDownList1_SelectedIndexChanged(object sender, Telerik.WinControls.UI.Data.PositionChangedEventArgs e)
         {
-            RestClient client = new RestClient();
-            //gets list of urls and ports of the stocks
-            StockURLS STK = new StockURLS();
+            try
+            {
+                RestClient client = new RestClient();
+                //gets list of urls and ports of the stocks
+                StockURLS STK = new StockURLS();
 
-            //the indizes match so this should work
-            client.Host = STK.URLPORTS[int.Parse(radDropDownList1.SelectedItem.Tag.ToString(),System.Globalization.NumberStyles.Any)].Item1;
-            client.Port = STK.URLPORTS[int.Parse(radDropDownList1.SelectedItem.Tag.ToString(), System.Globalization.NumberStyles.Any)].Item2;
+                //the indizes match so this should work
+                //via host url and port its not possible to get this call to work (http://ec2-35-156-47-142.eu-central-1.compute.amazonaws.com:8080/awsServer) cannot get the /awsServer into the call
+                client.Host = STK.URLPORTS[radDropDownList1.SelectedIndex].Item1;
+                client.Port = STK.URLPORTS[radDropDownList1.SelectedIndex].Item2;
 
-            //request for shares which can be bought currently at a certain stock
-            RestRequest request = new RestRequest("/boerse/listCourses");
-            request.HttpMethod = Grapevine.Shared.HttpMethod.GET;
+                //request for shares which can be bought currently at a certain stock
+                RestRequest request = new RestRequest("/boerse/listCourses");
+                //https is not supported by this method -> gives error on "Niemansland" stock because this is using https only 
+                request.HttpMethod = Grapevine.Shared.HttpMethod.GET;
 
-            //get the Json from server and get the payload from it
-            IRestResponse response = client.Execute(request);
-            string restContent = response.GetContent();
+                //get the Json from server and get the payload from it
+                IRestResponse response = client.Execute(request);
+                string restContent = response.GetContent();
 
-            parseShareData(restContent);
+                parseShareData(restContent);
 
-            //reset and assign new datasource of grid to display new data
-            grdAvailableShares.DataSource = null;
-            grdAvailableShares.DataSource = LstAvailableSharesOfMarket;
+                //reset and assign new datasource of grid to display new data
+                grdAvailableShares.DataSource = null;
+                grdAvailableShares.DataSource = LstAvailableSharesOfMarket;
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("Error receiving data from selected stock market. Reasons might be that the server is using https.", "Rest API error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
 
         /// <summary>
@@ -356,15 +442,12 @@ namespace Stock_Application
                 LstAvailableSharesOfMarket = new BindingList<Share>(stockList);
 
                 //algorithm relies on correct order of properties and cant be used
-                //JToken token = JToken.Parse(restContent);
-                /*foreach (var item in token)
+                /*JToken token = JToken.Parse(restContent);
+                foreach (var item in token)
                 {
                     Share tmpShare = new Share(item.ElementAt(0).Values().First().ToString(), item.ElementAt(1).Values().First().ToString(), item.ElementAt(2).Values().First().ToString(), item.ElementAt(3).Values().First().ToString(), );
-
                     LstAvailableSharesOfMarket.Add(tmpShare);
                 }*/
-
-
             }
             catch (Exception)
             {
@@ -372,6 +455,196 @@ namespace Stock_Application
                 return;
             }
         }
+
+        /// <summary>
+        /// Collects required information of selected user, selected stock and the amount of shares and sends a buy request to stock
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void btnSendBuyOrder_Click(object sender, EventArgs e)
+        {
+            //selected user
+            Customer tmpCustomer = SelectedCustomer;
+
+            //selected stock
+            StockURLS STK = new StockURLS();
+
+
+            string tmpHost = string.Empty;
+            int tmpPort = int.MinValue;
+            //the indizes match so this should work
+            try
+            {
+                tmpHost = STK.URLPORTS[radDropDownList1.SelectedIndex].Item1;
+                tmpPort = STK.URLPORTS[radDropDownList1.SelectedIndex].Item2;
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("You have to select a stock before you can playce an order.", "Invalid operation", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+
+            //amount of shares to buy
+            int tmpAmount = int.Parse(txtShareAmount.Value.ToString(), System.Globalization.NumberStyles.Any);
+
+            //selected share to buy (first should be fine cause of multiselect = false)
+            var tmpShareToBuy = grdAvailableShares.SelectedRows?.First();
+
+            //max buy value per share
+            double tmpMaxBuyValue = double.Parse(txtMaxBuyValue.Value.ToString(), System.Globalization.NumberStyles.Any);
+
+            try
+            {
+                checkValidBuyOrderData(tmpCustomer, tmpHost, tmpPort, tmpAmount, tmpShareToBuy, tmpMaxBuyValue);
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("Error sending buy order.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Debug.Print(ex.Message);
+                return;
+            }
+
+            //if all checks are done with success the order can be placed
+            placeBuyOrder(tmpCustomer, tmpHost, tmpPort, tmpAmount, tmpShareToBuy, tmpMaxBuyValue);
+        }
+
+        /// <summary>
+        /// Generates the order and send it to the according server
+        /// </summary>
+        /// <param name="tmpCustomer"></param>
+        /// <param name="tmpHost"></param>
+        /// <param name="tmpPort"></param>
+        /// <param name="tmpAmount"></param>
+        /// <param name="tmpShareToBuy"></param>
+        private void placeBuyOrder(Customer tmpCustomer, string tmpHost, int tmpPort, int tmpAmount, GridViewRowInfo tmpShareToBuy, double tmpMaxBuyValue)
+        {
+            RestClient client = new RestClient();
+
+            client.Host = tmpHost;
+            client.Port = tmpPort;
+
+            //request for placing an order
+            RestRequest request = new RestRequest("/boerse/buy");
+            //https is not supported by this method -> gives error on "Niemansland" stock because this is using https only 
+            request.HttpMethod = Grapevine.Shared.HttpMethod.POST;
+            //set payloads format to json
+            request.ContentType = ContentType.JSON;
+
+            //generate order object to Json serialize it afterwards
+            Order tmpOrder = new Order(Guid.NewGuid().ToString(), tmpShareToBuy.Cells[0].Value.ToString(), tmpAmount.ToString(), tmpMaxBuyValue.ToString(), string.Empty);
+
+            //generate JSON payload for POST
+            string tmpPayload = Newtonsoft.Json.JsonConvert.SerializeObject(tmpOrder);
+            request.Payload = tmpPayload;
+
+            //send the post request to server
+            var respond = client.Execute(request);
+
+            if (respond.StatusCode == HttpStatusCode.InternalServerError)
+            {
+                MessageBox.Show("Internal server error!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            else
+            {
+                MessageBox.Show("Order was succusfully placed at server´s stock.", "Order placed.", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                //if placing the order was successful the order has to be stored for the client application
+                addDueOrderItem(new Tuple<string, string>(tmpOrder.orderID.ToString(), tmpCustomer.GUID));
+            }
+            resetTab3Controls();
+        }
+
+        /// <summary>
+        /// Adds a new due order to local list and DB
+        /// </summary>
+        private async void addDueOrderItem(Tuple<string, string> tmpTuple)
+        {
+            //add it to local list
+            LstDueOrders.Add(tmpTuple);
+
+            try
+            {
+                BsonDocument newEntry = new BsonDocument
+            {
+                {"OrderGuid", tmpTuple.Item1 },
+                {"CustomerGuid", tmpTuple.Item2 }
+            };
+                await db_connection.dueOrderTable.InsertOneAsync(newEntry);
+            }
+            catch (Exception ex)
+            {
+                Debug.Print(ex.Message);
+                throw new InvalidOperationException();
+            }
+        }
+
+        /// <summary>
+        /// Resets the controls of Tab3 when the user tried to place an order
+        /// </summary>
+        private void resetTab3Controls()
+        {
+            txtMaxBuyValue.Value = 0;
+            txtShareAmount.Value = 0;
+        }
+
+        /// <summary>
+        /// Checks for valid data of the buy order
+        /// </summary>
+        /// <param name="tmpCustomer"></param>
+        /// <param name="tmpHost"></param>
+        /// <param name="tmpPort"></param>
+        /// <param name="tmpAmount"></param>
+        /// <returns></returns>
+        private void checkValidBuyOrderData(Customer tmpCustomer, string tmpHost, int tmpPort, int tmpAmount, GridViewRowInfo tmpShareToBuy, double tmpMaxBuyValue)
+        {
+            if (tmpCustomer == null)
+            {
+                MessageBox.Show("No valid selected Customer found!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                throw new NullReferenceException();
+            }
+
+            if (tmpHost == string.Empty || tmpPort < 0)
+            {
+                throw new NullReferenceException();
+            }
+
+            if (tmpAmount <= 0)
+            {
+                MessageBox.Show("Invalid amount of shares for order!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                throw new InvalidOperationException();
+            }
+
+            int cntAvailableShare = int.MaxValue;
+            try
+            {
+                cntAvailableShare = int.Parse(tmpShareToBuy.Cells[3].Value.ToString(), System.Globalization.NumberStyles.Any);
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+
+            if (tmpMaxBuyValue <= 0)
+            {
+                MessageBox.Show("Invalid max. buy value per share!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                throw new Exception();
+            }
+
+            //see if customer has enough money to order the shares
+            if (double.Parse(tmpCustomer.Equity, System.Globalization.NumberStyles.Any) < (tmpMaxBuyValue * tmpAmount))
+            {
+                MessageBox.Show("Customer has not enough money to place this order!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                throw new Exception();
+            }
+
+            if (cntAvailableShare <= 0)
+            {
+                MessageBox.Show("No shares available at the moment.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                throw new Exception();
+            }
+        }
+
 
 
 
