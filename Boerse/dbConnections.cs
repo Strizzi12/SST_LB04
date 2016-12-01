@@ -23,4 +23,12 @@ namespace MongoDBConnection
 		private static IMongoDatabase dbtemp = Client.GetDatabase("boerse");
 		public static IMongoCollection<BsonDocument> _db = dbtemp.GetCollection<BsonDocument>("orders");
 	}
+
+	public static class dbConnectionAktienverlauf
+	{
+		private static String connectionString = "mongodb://ec2-35-164-218-97.us-west-2.compute.amazonaws.com";
+		private static MongoClient Client = new MongoDB.Driver.MongoClient(connectionString);
+		private static IMongoDatabase dbtemp = Client.GetDatabase("boerse");
+		public static IMongoCollection<BsonDocument> _db = dbtemp.GetCollection<BsonDocument>("aktienverlauf");
+	}
 }

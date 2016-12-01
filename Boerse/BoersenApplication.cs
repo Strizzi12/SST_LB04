@@ -13,6 +13,7 @@ using MongoDB.Driver;
 using Newtonsoft.Json;
 using System.IO;
 using System.Threading;
+using System.Collections;
 
 namespace Boerse
 {
@@ -22,8 +23,8 @@ namespace Boerse
 		{
 			Debug.WriteLine("Started!");
 			ServerSettings settings = new ServerSettings();
-			//settings.Host = "ec2-35-164-218-97.us-west-2.compute.amazonaws.com";    //93.82.35.63 
-			settings.Host = "localhost";    //93.82.35.63 
+			settings.Host = "ec2-35-164-218-97.us-west-2.compute.amazonaws.com";    //93.82.35.63 
+			//settings.Host = "localhost";    //93.82.35.63 
 			settings.Port = "1234";
 			insertInitialData();
 			try
@@ -32,7 +33,7 @@ namespace Boerse
 				{
 					server.LogToConsole().Start();
 					//New Thread needs to be started, which calculates the market prizes and handles the orders.
-					Thread myThread = new Thread(new ThreadStart(orderBookOperations));
+					//Thread myThread = new Thread(new ThreadStart(orderBookOperations));
 					Console.ReadLine();
 					server.Stop();
 				}
@@ -74,7 +75,7 @@ namespace Boerse
 						{
 							//Check if AktienID is equivalent to current AktienID which is processed.
 							Guid deserializedAktienID = new Guid(order.GetElement("aktienID").Value.ToString());
-							if(aktienID.Equals(deserializedAktienID))
+							if(!aktienID.Equals(deserializedAktienID))
 								continue;
 
 							//Get all entrys in Order-Table and check if Order is "in progress"
@@ -154,15 +155,117 @@ namespace Boerse
 						//For Memory purposes^^
 						limitList.Clear();
 
-						//Kursfeststellung
+						//Kursfeststellung - here are buy order smaller than sell orders
 						KeyVal<double, int, int> best = new KeyVal<double, int, int>(0, 0, 0);
+						foreach(var item in sortedLimitListBuy)
+						{
+							int count = 1;
+							int maxCount = sortedLimitListBuy.Count;
+							for(int i = 0; i < count; i++)
+							{
+								item.amountSell += sortedLimitListBuy[i].amountSell;
+								count++;
+							}
+							count = maxCount - 1;
+							for(int i = maxCount; i > count; i--)
+							{
+								item.amountBuy += sortedLimitListBuy[i].amountBuy;
+								count--;
+							}
+						}
+
+						//Hier sollen alle Buy und Sell Order von unten bzw. von oben aufgelistet werden.!
 						foreach(var item in sortedLimitListBuy)
 						{
 							if(item.amountSell > item.amountBuy && best.limit < item.limit)
 								best = item;
 						}
+						//For Memory purposes^^
+						sortedLimitListBuy.Clear();
 
-						//TODO
+						//Setting the price for the specific aktienID
+						//Get the _id of the MongoDB document
+						var _id = stock.GetElement("_id").Value.ToString();
+						var filter = Builders<BsonDocument>.Filter.Eq("_id", _id);
+						var update = Builders<BsonDocument>.Update.Set("course", best.limit);
+						var result = dbStocks.UpdateOne(filter, update);
+
+						//Check all the orders and update them
+						//Sort them per timestamp
+						List<MainOrder> timestampSortedOrderList = new List<MainOrder>();
+						timestampSortedOrderList = orderList.OrderBy(o => o.receivedOrder.timestamp).ToList();
+						foreach(var sortedOrder in timestampSortedOrderList)
+						{
+							
+							var quantity = sortedOrder.receivedOrder.amount;
+							//Buy
+							if(sortedOrder.useCase == BUYORSELL.Buy && sortedOrder.receivedOrder.limit < best.limit)
+							{
+								if(quantity < best.amountBuy)
+								{
+									//Order bearbeiten
+									sortedOrder.statusOfOrder = 0;	//Successfull
+									//Remaining amount calculation
+									best.amountBuy -= quantity;
+								}
+								else
+								{
+									sortedOrder.statusOfOrder = 3;  //Not enough goods
+									sortedOrder.receivedOrder.amount = 0;
+								}
+							}
+							//Sell
+							else if(sortedOrder.useCase == BUYORSELL.Sell && sortedOrder.receivedOrder.limit > best.limit)
+							{
+								if(quantity < best.amountSell)
+								{
+									//Order bearbeiten
+									sortedOrder.statusOfOrder = 0;  //Successfull
+									//Remaining amount calculation
+									best.amountSell -= quantity;
+								}
+								else
+								{
+									sortedOrder.statusOfOrder = 3;  //Not enough goods
+									sortedOrder.receivedOrder.amount = 0;
+								}
+							}
+							else if((sortedOrder.useCase == BUYORSELL.Buy && sortedOrder.receivedOrder.limit > best.limit) || (sortedOrder.useCase == BUYORSELL.Sell && sortedOrder.receivedOrder.limit < best.limit))
+							{
+								sortedOrder.statusOfOrder = 4;		//Wrong price
+							}
+							else
+							{
+								sortedOrder.statusOfOrder = 2;      //Denied
+							}
+						}
+
+						//Update the orders in the database with the updated sorted orderList
+						foreach(var order in OrderEntrys)
+						{
+							Guid orderID = new Guid(stock.GetElement("orderID").Value.ToString());
+							foreach(var item in timestampSortedOrderList)
+							{
+								Guid itemOrderID = item.receivedOrder.orderID;
+								if(itemOrderID.Equals(orderID))
+								{
+									var order_id = order.GetElement("_id").Value.ToString();
+									var orderFilter = Builders<BsonDocument>.Filter.Eq("_id", _id);
+									var orderUpdate = Builders<BsonDocument>.Update.Set("statusOfOrder", item.statusOfOrder).Set("amount", item.receivedOrder.amount);
+									var orderResult = dbStocks.UpdateOne(filter, update);
+								}
+							}
+						}
+
+						//Insert new value of the current aktienID into database, where the course balancing is stored.
+						var dbAktienverlauf = dbConnectionAktienverlauf._db;
+						var aktie = new BsonDocument()
+						{
+							{"aktienID", aktienID},
+							{"course", best.limit},
+							{"timestamp", ((Int32)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds).ToString()}
+						};
+						dbOrders.InsertOne(aktie);
 					}
 				}
 				catch(Exception ex)
