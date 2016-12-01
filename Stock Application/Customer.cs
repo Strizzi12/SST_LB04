@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Stock_Application
 {
@@ -69,17 +65,43 @@ namespace Stock_Application
         }
 
         /// <summary>
+        /// Contains all shares which belong to a customer
+        /// </summary>
+        public Depot Depot = null;
+
+        /// <summary>
+        /// Not nice - only for display purposes
+        /// </summary>
+        public string DepotGuid
+        {
+            get { return Depot?.DepotGuid; }
+        }
+
+        /// <summary>
         /// Constructor for setting the required information initially
         /// </summary>
         /// <param name="firstname"></param>
         /// <param name="lastname"></param>
         /// <param name="equity"></param>
         /// <param name="guid">if string.empty, a new guid will be generated</param>
-        public Customer(string firstname, string lastname, double equity, string guid)
+        /// <param name="depotGuid"> if string.empty, a new depot guid will be generated</param>
+        public Customer(string firstname, string lastname, double equity, string guid, string depotGuid)
         {
             this.prpFirstname = firstname;
             this.prpLastname = lastname;
             this.prpEquity = equity;
+
+            if (depotGuid != string.Empty)
+            {
+                this.Depot = new Depot(depotGuid);
+
+                //TODO: load data for depot according from server
+            }
+            else
+            {
+                this.Depot = new Depot(string.Empty);
+            }
+            
             //storing GUID as string for simplicity
             if (guid != string.Empty)
             {
@@ -87,8 +109,7 @@ namespace Stock_Application
             }
             else
             {
-                Guid tmpGuid = Guid.NewGuid();
-                prpGUID = tmpGuid.ToString();
+                prpGUID = Guid.NewGuid().ToString();
             }
         }
 
