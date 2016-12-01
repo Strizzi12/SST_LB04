@@ -240,6 +240,10 @@ namespace Boerse
 							}
 						}
 
+						//Update the remaining amount in the stock database
+						update = Builders<BsonDocument>.Update.Set("amount", best.amountSell);
+						result = dbStocks.UpdateOne(filter, update);
+
 						//Update the orders in the database with the updated sorted orderList
 						foreach(var order in OrderEntrys)
 						{
