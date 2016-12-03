@@ -80,10 +80,10 @@ namespace Stock_Application
 
                 foreach (var dueOrderItem in LstDueOrders)
                 {
-                    RestClient client = new RestClient();
+                    RestClient client1 = new RestClient();
 
-                    client.Host = dueOrderItem.Item3.ToString();
-                    client.Port = dueOrderItem.Item4;
+                    client1.Host = dueOrderItem.Item3.ToString();
+                    client1.Port = dueOrderItem.Item4;
 
                     //request for placing an order
                     RestRequest request = new RestRequest("/boerse/check");
@@ -100,7 +100,7 @@ namespace Stock_Application
                     request.Payload = tmpPayload;
 
                     //send the post request to server
-                    var respond = client.Execute(request);
+                    var respond = client1.Execute(request);
 
                     //check if payload has status 0
 
@@ -490,7 +490,16 @@ namespace Stock_Application
                 request.HttpMethod = Grapevine.Shared.HttpMethod.GET;
 
                 //get the Json from server and get the payload from it
-                IRestResponse response = client.Execute(request);
+                IRestResponse response = null;
+                try
+                {
+                    response = client.Execute(request);
+                }
+                catch (Exception ex)
+                {
+                    Debug.Print(ex.Message);
+                }
+                
                 string restContent = response.GetContent();
 
                 parseShareData(restContent);
@@ -621,8 +630,16 @@ namespace Stock_Application
             string tmpPayload = Newtonsoft.Json.JsonConvert.SerializeObject(tmpOrder);
             request.Payload = tmpPayload;
 
-            //send the post request to server
-            var respond = client.Execute(request);
+            IRestResponse respond = null;
+            try
+            {
+                //send the post request to server
+                respond = client.Execute(request);
+            }
+            catch (Exception ex)
+            {
+                Debug.Print(ex.Message);
+            }
 
             if (respond.StatusCode == HttpStatusCode.InternalServerError)
             {
@@ -639,6 +656,9 @@ namespace Stock_Application
                 setCustomersEquityByGuid(tmpCustomer.GUID, (-1 * tmpAmount * tmpMaxBuyValue));
             }
             resetTab3Controls();
+
+            client = null;
+            request = null;
         }
 
         /// <summary>

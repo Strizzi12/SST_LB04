@@ -10,12 +10,12 @@ namespace Stock_Application
         /// <summary>
         /// Guid of the order
         /// </summary>
-        public Guid orderID;
+        public string orderID;
 
         /// <summary>
         /// Guid of the share which user wants to buy
         /// </summary>
-        public Guid aktienID;
+        public string aktienID;
 
         /// <summary>
         /// Cnt how much shares should be bought
@@ -48,8 +48,8 @@ namespace Stock_Application
         /// <param name="tmpHash"></param>
         public Order(string tmpOrderID, string tmpAktienID, string tmpAmount, string tmpLimit, string tmpHash)
         {
-            orderID = Guid.Parse(tmpOrderID);
-            aktienID = Guid.Parse(tmpAktienID);
+            orderID = tmpOrderID;
+            aktienID = tmpAktienID;
             amount = int.Parse(tmpAmount, System.Globalization.NumberStyles.Any);
             limit = double.Parse(tmpLimit, System.Globalization.NumberStyles.Any);
             //http://stackoverflow.com/questions/17632584/how-to-get-the-unix-timestamp-in-c-sharp
