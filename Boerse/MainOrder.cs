@@ -21,6 +21,7 @@ namespace Boerse
 
 		public MainOrder()
 		{
+			receivedOrder = new Order();
 		}
 	}
 

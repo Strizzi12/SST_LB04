@@ -13,6 +13,7 @@ using MongoDB.Driver;
 using Newtonsoft.Json;
 using System.IO;
 using System.Threading;
+using System.Collections;
 
 namespace Boerse
 {
@@ -33,6 +34,7 @@ namespace Boerse
 					server.LogToConsole().Start();
 					//New Thread needs to be started, which calculates the market prizes and handles the orders.
 					Thread myThread = new Thread(new ThreadStart(orderBookOperations));
+					myThread.Start();
 					Console.ReadLine();
 					server.Stop();
 				}
@@ -51,7 +53,7 @@ namespace Boerse
 				int minutes = 5;
 				Thread.Sleep(1000 * 60 * minutes);
 				//Do work here
-
+				Console.WriteLine("Starting to process the orders!");
 				//order the limit
 				//the limit with most verkäufe to given käufe is taken
 				//the one with the lower timestamp gets their full amount, rest is depending on next timestamp and so on.
@@ -64,6 +66,8 @@ namespace Boerse
 					var dbOrders = dbConnectionOrders._db;
 					var OrderEntrys = dbOrders.Find(new BsonDocument()).ToList();
 
+					var dbAktienverlauf = dbConnectionAktienverlauf._db;
+
 					//Do work for each aktienID
 					foreach(var stock in stockEntrys)
 					{
@@ -74,7 +78,7 @@ namespace Boerse
 						{
 							//Check if AktienID is equivalent to current AktienID which is processed.
 							Guid deserializedAktienID = new Guid(order.GetElement("aktienID").Value.ToString());
-							if(aktienID.Equals(deserializedAktienID))
+							if(!aktienID.Equals(deserializedAktienID))
 								continue;
 
 							//Get all entrys in Order-Table and check if Order is "in progress"
@@ -102,37 +106,53 @@ namespace Boerse
 						}
 
 						//Look at each order, differentiate each limit (if buy or sell) an add up their amount from the different order.
-						List<KeyVal<double,int, int>> limitList = new List<KeyVal<double, int, int>>();
+						List<KeyVal<double, int, int>> limitList = new List<KeyVal<double, int, int>>();
+						bool found = false;
 						foreach(MainOrder order in orderList)
 						{
 							double limit = order.receivedOrder.limit;
 							int amount = order.receivedOrder.amount;
-							foreach(KeyVal<double, int, int> item in limitList)
+							foreach(KeyVal<double, int, int> item in limitList) //FEHLER!!!
 							{
 								//Buy
 								if(order.useCase == 0)
 								{
 									if(item.limit == limit)
-										item.amountBuy += order.receivedOrder.amount;
-									else
 									{
-										KeyVal<double, int, int> newKeyVal = new KeyVal<double, int, int>(limit, order.receivedOrder.amount, 0);
-										limitList.Add(newKeyVal);
+										item.amountBuy += order.receivedOrder.amount;
+										found = true;
+										break;
 									}
 								}
 								//Sell
 								else
 								{
 									if(item.limit == limit)
-										item.amountSell += order.receivedOrder.amount;
-									else
 									{
-										KeyVal<double, int, int> newKeyVal = new KeyVal<double, int, int>(limit, 0, order.receivedOrder.amount);
-										limitList.Add(newKeyVal);
+										item.amountSell += order.receivedOrder.amount;
+										found = true;
+										break;
 									}
 								}
 							}
+							if(!found)
+							{
+								//Buy
+								if(order.useCase == 0)
+								{
+									KeyVal<double, int, int> newKeyVal = new KeyVal<double, int, int>(limit, order.receivedOrder.amount, 0);
+									limitList.Add(newKeyVal);
+								}
+								//Sell
+								else
+								{
+									KeyVal<double, int, int> newKeyVal = new KeyVal<double, int, int>(limit, 0, order.receivedOrder.amount);
+									limitList.Add(newKeyVal);
+								}
+							}
+							found = false;
 						}
+						found = false;
 
 						//The market also wants to sell their remaining stocks so this also needs to be taken into account
 						int amountInBoerse = Int32.Parse(stock.GetElement("amount").Value.ToString(), System.Globalization.NumberStyles.Any);
@@ -140,30 +160,145 @@ namespace Boerse
 						foreach(KeyVal<double, int, int> item in limitList)
 						{
 							if(item.limit == courseInBoerse)
-								item.amountSell += amountInBoerse;
-							else
 							{
-								KeyVal<double, int, int> newKeyVal = new KeyVal<double, int, int>(courseInBoerse, 0, amountInBoerse);
-								limitList.Add(newKeyVal);
+								item.amountSell += amountInBoerse;
+								found = true;
 							}
+						}
+						if(!found)
+						{
+							KeyVal<double, int, int> newKeyVal = new KeyVal<double, int, int>(courseInBoerse, 0, amountInBoerse);
+							limitList.Add(newKeyVal);
 						}
 
 						//Now compare the best amount of buy/sell
-						List<KeyVal<double, int, int>> sortedLimitListBuy = limitList.OrderBy(o => o.limit).ToList();
+						List<KeyVal<double, int, int>> sortedLimitListBuy = limitList.OrderByDescending(o => o.limit).ToList();
 
 						//For Memory purposes^^
-						limitList.Clear();
+						//limitList.Clear();
 
-						//Kursfeststellung
+						//Hier sollen alle Buy und Sell Order von unten bzw. von oben aufgelistet werden.!
+						int count = 1;
+						foreach(var item in sortedLimitListBuy)
+						{
+							for(int i = 0; i < count; i++)
+							{
+								item.amountSell += sortedLimitListBuy[i].amountSell;
+							}
+							count++;
+						}
+						int maxCount = sortedLimitListBuy.Count;
+						count = maxCount - 1;
+						foreach(var item in sortedLimitListBuy)
+						{
+							for(int i = maxCount - 1; i > count - 1; i--)
+							{
+								item.amountBuy += sortedLimitListBuy[i].amountBuy;
+							}
+							count--;
+						}
+
+						//Kursfeststellung - here are buy order smaller than sell orders
 						KeyVal<double, int, int> best = new KeyVal<double, int, int>(0, 0, 0);
 						foreach(var item in sortedLimitListBuy)
 						{
-							if(item.amountSell > item.amountBuy && best.limit < item.limit)
+							//Feststellung hier muss amount buy größer als die von best sein
+							if(item.amountSell >= item.amountBuy && best.amountBuy <= item.amountBuy)
+							{
 								best = item;
+							}
+						}
+						//For Memory purposes^^
+						//sortedLimitListBuy.Clear();
+
+						//Setting the price for the specific aktienID
+						//Get the _id of the MongoDB document
+						//var _id = stock.GetElement("_id").Value.ToString();
+						var filter = Builders<BsonDocument>.Filter.Eq("aktienID", aktienID.ToString());
+						var update = Builders<BsonDocument>.Update.Set("course", best.limit);
+						var result = dbStocks.UpdateOne(filter, update);
+
+						//Check all the orders and update them
+						//Sort them per timestamp
+						List<MainOrder> timestampSortedOrderList = new List<MainOrder>();
+						timestampSortedOrderList = orderList.OrderBy(o => o.receivedOrder.timestamp).ToList();
+						foreach(var sortedOrder in timestampSortedOrderList)
+						{
+							var quantity = sortedOrder.receivedOrder.amount;
+							//Buy
+							if(sortedOrder.useCase.Equals(BUYORSELL.Buy) && sortedOrder.receivedOrder.limit <= best.limit)
+							{
+								if(quantity <= best.amountBuy)
+								{
+									//Order bearbeiten
+									sortedOrder.statusOfOrder = 0;  //Successfull
+																	//Remaining amount calculation
+									best.amountBuy -= quantity;
+								}
+								else
+								{
+									sortedOrder.statusOfOrder = 3;  //Not enough goods
+									sortedOrder.receivedOrder.amount = 0;
+								}
+							}
+							//Sell
+							else if(sortedOrder.useCase.Equals(BUYORSELL.Sell) && sortedOrder.receivedOrder.limit >= best.limit)
+							{
+								if(quantity <= best.amountSell)
+								{
+									//Order bearbeiten
+									sortedOrder.statusOfOrder = 0;  //Successfull
+																	//Remaining amount calculation
+									best.amountSell -= quantity;
+								}
+								else
+								{
+									sortedOrder.statusOfOrder = 3;  //Not enough goods
+									sortedOrder.receivedOrder.amount = 0;
+								}
+							}
+							else if((sortedOrder.useCase.Equals(BUYORSELL.Buy) && sortedOrder.receivedOrder.limit >= best.limit) || (sortedOrder.useCase.Equals(BUYORSELL.Sell) && sortedOrder.receivedOrder.limit <= best.limit))
+							{
+								sortedOrder.statusOfOrder = 4;      //Wrong price
+							}
+							else
+							{
+								sortedOrder.statusOfOrder = 2;      //Denied
+							}
 						}
 
-						//TODO
+						//Update the remaining amount in the stock database
+						update = Builders<BsonDocument>.Update.Set("amount", best.amountSell);
+						result = dbStocks.UpdateOne(filter, update);
+
+						//Update the orders in the database with the updated sorted orderList
+						foreach(var order in OrderEntrys)
+						{
+							Guid orderID = new Guid(order.GetElement("orderID").Value.ToString());
+							foreach(var item in timestampSortedOrderList)
+							{
+								Guid itemOrderID = item.receivedOrder.orderID;
+								if(itemOrderID.Equals(orderID))
+								{
+									//var order_id = order.GetElement("_id").Value.ToString();
+									var orderFilter = Builders<BsonDocument>.Filter.Eq("orderID", item.receivedOrder.orderID.ToString());
+									var orderUpdate = Builders<BsonDocument>.Update.Set("amount", item.receivedOrder.amount).Set("statusOfOrder", item.statusOfOrder);
+									var orderResult = dbOrders.UpdateOne(orderFilter, orderUpdate);
+									break;
+								}
+							}
+						}
+
+						//Insert new value of the current aktienID into database, where the course balancing is stored.
+						var aktie = new BsonDocument()
+						{
+							{"aktienID", aktienID},
+							{"course", best.limit},
+							{"timestamp", ((Int32)(DateTime.UtcNow.Subtract(new DateTime(1970, 1, 1))).TotalSeconds).ToString()}
+						};
+						dbAktienverlauf.InsertOne(aktie);
 					}
+					Console.WriteLine("Finished to process the orders!");
 				}
 				catch(Exception ex)
 				{
@@ -274,3 +409,25 @@ namespace Boerse
 		}
 	}
 }
+
+
+/*
+ private static async void updateAktie(BsonDocument stock, KeyVal<double, int, int> best)
+		{
+			//Setting the price for the specific aktienID
+			//Get the _id of the MongoDB document
+			var _id = stock.GetElement("_id").Value.ToString();
+			var filter = Builders<BsonDocument>.Filter.Eq("_id", _id);
+			var update = Builders<BsonDocument>.Update.Set("course", best.limit).Set("amount", best.amountSell);
+			var result = await dbConnectionStocks._db.UpdateOneAsync(filter, update);
+		}
+
+		private static async void updateOrder(BsonDocument order, MainOrder item)
+		{
+			var order_id = order.GetElement("_id").Value.ToString();
+			var orderFilter = Builders<BsonDocument>.Filter.Eq("_id", order_id);
+			var orderUpdate = Builders<BsonDocument>.Update.Set("amount", item.receivedOrder.amount).Set("statusOfOrder", item.statusOfOrder);
+			var orderResult = await dbConnectionOrders._db.UpdateOneAsync(orderFilter, orderUpdate);
+		}
+	 
+	 */

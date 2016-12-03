@@ -9,6 +9,7 @@ using MongoDBConnection;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Net;
 using System.Text;
@@ -263,14 +264,13 @@ public class BoersenResource
 				Guid aktienID = new Guid(item.GetElement("aktienID").Value.ToString());
 				if(order.aktienID.Equals(aktienID))
 					return true;
-			}
-			return false;
+			}		
 		}
 		catch(Exception ex)
 		{
 			Debug.Write(ex);
-			return false;
 		}
+		return false;
 	}
 
 	/// <summary>
@@ -280,19 +280,22 @@ public class BoersenResource
 	private string getStockListFromDb()
 	{
 		string result = string.Empty;
-		Stock stock = new Stock();
+		List<Stock> stockList = new List<Stock>();
+		
 		var dbStocks = dbConnectionStocks._db;
 		try
 		{
 			var entrys = dbStocks.Find(new BsonDocument()).ToList();
 			foreach(var item in entrys)
 			{
+				Stock stock = new Stock();
 				stock.aktienID = new Guid(item.GetElement("aktienID").Value.ToString());
 				stock.name = item.GetElement("name").Value.ToString();
 				stock.course = double.Parse(item.GetElement("course").Value.ToString(), System.Globalization.NumberStyles.Any);
 				stock.amount = Int32.Parse(item.GetElement("amount").Value.ToString(), System.Globalization.NumberStyles.Any);
-				result += JsonConvert.SerializeObject(stock);
+				stockList.Add(stock);
 			}
+			result = JsonConvert.SerializeObject(stockList);
 		}
 		catch(Exception ex)
 		{
