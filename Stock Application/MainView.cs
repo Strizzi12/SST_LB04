@@ -7,16 +7,30 @@ using MongoDB.Driver;
 using System.ComponentModel;
 using Telerik.WinControls.UI;
 using System.Linq;
-using Grapevine.Client;
 using Newtonsoft.Json.Linq;
-using Grapevine.Shared;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Net.Http;
+using System.Net.Http.Headers;
+using System.Text;
+using System.Net;
 
 namespace Stock_Application
 {
     public partial class MainView : Telerik.WinControls.UI.RadForm
     {
+        /// <summary>
+        /// Client for all the http calls
+        /// </summary>
+        static HttpClient client = new HttpClient();
+
+        //generates list of available URLs
+        static List<string> lstURLs = StockURLS.getStockURLS();
+
+        /// <summary>
+        /// Temporary list for inserting new due orders when possible
+        /// </summary>
+        private List<Tuple<string, string, string>> insertDueList = new List<Tuple<string, string, string>>();
 
         /// <summary>
         /// List of customer objects which are available during runtime
@@ -32,11 +46,11 @@ namespace Stock_Application
 
         /// <summary>
         /// Holds the outstanding orders
-        /// Item1 is the orderID, Item2 is the CustomerID which placed the order, item3 is the host url, item4 is the port as int
+        /// Item1 is the orderID, Item2 is the CustomerID which placed the order, item3 is the host url
         /// items contain all required information to poll for the respond to an order
         /// And yes i just dont want to use classes :P
         /// </summary>
-        public List<Tuple<string, string, string, int>> LstDueOrders = new List<Tuple<string, string, string, int>>();
+        public List<Tuple<string, string, string>> LstDueOrders = new List<Tuple<string, string, string>>();
 
         /// <summary>
         /// Represents the selected customer from Tab1
@@ -71,60 +85,150 @@ namespace Stock_Application
         /// <summary>
         /// Polls for responses
         /// </summary>
-        private void pollResponses(object sender, DoWorkEventArgs e)
+        private async void pollResponses(object sender, DoWorkEventArgs e)
         {
+            //List to remove done answered orders
+            List<Tuple<string, string, string>> listToRemove = new List<Tuple<string, string, string>>();
             while (true)
             {
-                //List to remove done answered orders
-                List<Tuple<string, string, string, int>> listToRemove = new List<Tuple<string, string, string, int>>();
+                syncDueOrderList(listToRemove);
 
                 foreach (var dueOrderItem in LstDueOrders)
                 {
-                    RestClient client1 = new RestClient();
+                    //reset client object if there is a problem with server and request can not be handled
+                    client.CancelPendingRequests();
+                    client.Dispose();
+                    client = null;
+                    client = new HttpClient();
 
-                    client1.Host = dueOrderItem.Item3.ToString();
-                    client1.Port = dueOrderItem.Item4;
-
-                    //request for placing an order
-                    RestRequest request = new RestRequest("/boerse/check");
-                    //https is not supported by this method -> gives error on "Niemansland" stock because this is using https only 
-                    request.HttpMethod = Grapevine.Shared.HttpMethod.POST;
-                    //set payloads format to json
-                    request.ContentType = ContentType.JSON;
+                    client.BaseAddress = new Uri(dueOrderItem.Item3);
+                    client.DefaultRequestHeaders.Accept.Clear();
+                    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
                     //generate order object to Json serialize it afterwards
                     Check tmpOrder = new Check(dueOrderItem.Item1);
 
                     //generate JSON payload for POST
                     string tmpPayload = Newtonsoft.Json.JsonConvert.SerializeObject(tmpOrder);
-                    request.Payload = tmpPayload;
+                    StringContent httpContent = new StringContent(tmpPayload, Encoding.UTF8, "application/json");
 
-                    //send the post request to server
-                    var respond = client1.Execute(request);
-
-                    //check if payload has status 0
-
-                    if (respond.StatusCode == HttpStatusCode.Ok)
+                    HttpResponseMessage response = null;
+                    //execute check call to server
+                    try
                     {
-                        Debug.Print("");
-                        listToRemove.Add(dueOrderItem);
+                        response = await client.PostAsync("boerse/check", httpContent);
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.Print(ex.Message);
+                    }
+
+                    //extract status from json object
+                    int status = int.MinValue;
+                    status = await evaluateCheckResponse(response);
+
+                    switch (status)
+                    {
+                        //successful
+                        case 0:
+
+
+
+                            //if order was processed by stock delete it from dueOrderList
+                            listToRemove.Add(dueOrderItem);
+                            break;
+                        //in progress
+                        case 1:
+                            break;
+                        //denied
+                        case 2:
+                            Debug.Print("Order was denied!");
+                            listToRemove.Add(dueOrderItem);
+                            break;
+                        //not enough goods
+                        case 3:
+                            Debug.Print("Not enough goods for order!");
+                            listToRemove.Add(dueOrderItem);
+                            break;
+                        //wrong price
+                        case 4:
+                            Debug.Print("Wrong price for order!");
+                            listToRemove.Add(dueOrderItem);
+                            break;
+                        default:
+                            Debug.Print("Unknown error occured. Status not within the expected range!");
+                            break;
                     }
                 }
-
-                foreach (var deleteItem in listToRemove)
-                {
-                    removeDueOrder(deleteItem);
-                }
-
                 Thread.Sleep(10000);
             }
+        }
+
+        /// <summary>
+        /// Gets the json response from server and extracts the status of the order on server
+        /// </summary>
+        /// <param name="response"></param>
+        /// <returns></returns>
+        private async Task<int> evaluateCheckResponse(HttpResponseMessage response)
+        {
+            int status = int.MinValue;
+
+            if (response != null)
+            {
+                if (response.IsSuccessStatusCode)
+                {
+                    //getting json strin from response
+                    string jsonResponseString = await response.Content.ReadAsStringAsync();
+
+                    JObject mystockpricelist = null;
+                    
+                    try
+                    {
+                        mystockpricelist = JObject.Parse(jsonResponseString);
+                        //get the status for order status evaluation
+                        if (mystockpricelist["state"] != null)
+                        {
+                            status = int.Parse(mystockpricelist["state"].ToString(), System.Globalization.NumberStyles.Any);
+                        }
+                        else if (mystockpricelist["status"] != null)
+                        {
+                            status = int.Parse(mystockpricelist["status"]?.ToString(), System.Globalization.NumberStyles.Any);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        Debug.Print(ex.Message);
+                    }
+                }
+            }
+
+            return status;
+        }
+
+        /// <summary>
+        /// Syncs the list of due orders with closed and new orders
+        /// </summary>
+        /// <param name="listToRemove"></param>
+        private void syncDueOrderList(List<Tuple<string, string, string>> listToRemove)
+        {
+            foreach (var deleteItem in listToRemove)
+            {
+                removeDueOrder(deleteItem);
+            }
+            listToRemove.Clear();
+
+            foreach (var item in insertDueList)
+            {
+                LstDueOrders.Add(item);
+            }
+            insertDueList.Clear();
         }
 
         /// <summary>
         /// Removes a due order from local list and DB
         /// </summary>
         /// <param name="itemToRemove"></param>
-        private void removeDueOrder(Tuple<string, string, string, int> itemToRemove)
+        private void removeDueOrder(Tuple<string, string, string> itemToRemove)
         {
             LstDueOrders.Remove(itemToRemove);
 
@@ -156,9 +260,9 @@ namespace Stock_Application
         /// <summary>
         /// Initial load of due orders from DB
         /// </summary>
-        private List<Tuple<string, string, string, int>> loadDueOrdersFromDB()
+        private List<Tuple<string, string, string>> loadDueOrdersFromDB()
         {
-            List<Tuple<string, string, string, int>> tmpDueOrderList = new List<Tuple<string, string, string, int>>();
+            List<Tuple<string, string, string>> tmpDueOrderList = new List<Tuple<string, string, string>>();
 
             try
             {
@@ -167,7 +271,7 @@ namespace Stock_Application
                 //getting values from DB to internal format
                 foreach (var dueOrderItem in dueOrderDB)
                 {
-                    tmpDueOrderList.Add(new Tuple<string, string, string, int>(dueOrderItem.GetElement("OrderGuid").Value.ToString(), dueOrderItem.GetElement("CustomerGuid").Value.ToString(), dueOrderItem.GetElement("Host").Value.ToString(), int.Parse(dueOrderItem.GetElement("Port").Value.ToString(), System.Globalization.NumberStyles.Any)));
+                    tmpDueOrderList.Add(new Tuple<string, string, string>(dueOrderItem.GetElement("OrderGuid").Value.ToString(), dueOrderItem.GetElement("CustomerGuid").Value.ToString(), dueOrderItem.GetElement("Host").Value.ToString()));
                 }
             }
             catch (Exception)
@@ -475,42 +579,50 @@ namespace Stock_Application
         {
             try
             {
-                RestClient client = new RestClient();
-                //gets list of urls and ports of the stocks
-                StockURLS STK = new StockURLS();
+                //gets the available shares from the selected server
+                getShares(lstURLs.ElementAt(radDropDownList1.SelectedIndex));
 
-                //the indizes match so this should work
-                //via host url and port its not possible to get this call to work (http://ec2-35-156-47-142.eu-central-1.compute.amazonaws.com:8080/awsServer) cannot get the /awsServer into the call
-                client.Host = STK.URLPORTS[radDropDownList1.SelectedIndex].Item1;
-                client.Port = STK.URLPORTS[radDropDownList1.SelectedIndex].Item2;
-
-                //request for shares which can be bought currently at a certain stock
-                RestRequest request = new RestRequest("/boerse/listCourses");
-                //https is not supported by this method -> gives error on "Niemansland" stock because this is using https only 
-                request.HttpMethod = Grapevine.Shared.HttpMethod.GET;
-
-                //get the Json from server and get the payload from it
-                IRestResponse response = null;
-                try
-                {
-                    response = client.Execute(request);
-                }
-                catch (Exception ex)
-                {
-                    Debug.Print(ex.Message);
-                }
-                
-                string restContent = response.GetContent();
-
-                parseShareData(restContent);
-
-                //reset and assign new datasource of grid to display new data
-                grdAvailableShares.DataSource = null;
-                grdAvailableShares.DataSource = LstAvailableSharesOfMarket;
             }
             catch (Exception)
             {
                 MessageBox.Show("Error receiving data from selected stock market. Reasons might be that the server is using https.", "Rest API error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// Gets available shares from server
+        /// </summary>
+        /// <param name="hostUri"></param>
+        private async void getShares(string hostUri)
+        {
+            try
+            {
+                //reset client object if there is a problem with server and request can not be handled
+                client.CancelPendingRequests();
+                client.Dispose();
+                client = null;
+                client = new HttpClient();
+
+                client.BaseAddress = new Uri(hostUri);
+                client.DefaultRequestHeaders.Accept.Clear();
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+                HttpResponseMessage response = await client.GetAsync("boerse/listCourses");
+
+                if (response.IsSuccessStatusCode)
+                {
+                    parseShareData(await response.Content.ReadAsStringAsync());
+                }
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("Server is currently unreachable. Please retry later.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                //reset client object if there is a problem with server and request can not be handled
+                client.CancelPendingRequests();
+                client.Dispose();
+                client = null;
+                client = new HttpClient();
+                return;
             }
         }
 
@@ -531,15 +643,12 @@ namespace Stock_Application
                 var stockList = new List<Share>();
                 stockList = myStockPriceList.Select(x => new Share((string)x["aktienID"], (string)x["name"], (string)x["course"], (string)x["amount"], "no depot assigned")).ToList();
 
+                //generate bindinglist for databinding on grd
                 LstAvailableSharesOfMarket = new BindingList<Share>(stockList);
 
-                //algorithm relies on correct order of properties and cant be used
-                /*JToken token = JToken.Parse(restContent);
-                foreach (var item in token)
-                {
-                    Share tmpShare = new Share(item.ElementAt(0).Values().First().ToString(), item.ElementAt(1).Values().First().ToString(), item.ElementAt(2).Values().First().ToString(), item.ElementAt(3).Values().First().ToString(), );
-                    LstAvailableSharesOfMarket.Add(tmpShare);
-                }*/
+                //add new datasource to grd
+                grdAvailableShares.DataSource = null;
+                grdAvailableShares.DataSource = LstAvailableSharesOfMarket;
             }
             catch (Exception)
             {
@@ -558,24 +667,18 @@ namespace Stock_Application
             //selected user
             Customer tmpCustomer = SelectedCustomer;
 
-            //selected stock
-            StockURLS STK = new StockURLS();
-
-
-            string tmpHost = string.Empty;
-            int tmpPort = int.MinValue;
+            string hostURL = string.Empty;
             //the indizes match so this should work
             try
             {
-                tmpHost = STK.URLPORTS[radDropDownList1.SelectedIndex].Item1;
-                tmpPort = STK.URLPORTS[radDropDownList1.SelectedIndex].Item2;
+                hostURL = lstURLs.ElementAt(radDropDownList1.SelectedIndex);
+
             }
             catch (Exception)
             {
                 MessageBox.Show("You have to select a stock before you can playce an order.", "Invalid operation", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
-
 
             //amount of shares to buy
             int tmpAmount = int.Parse(txtShareAmount.Value.ToString(), System.Globalization.NumberStyles.Any);
@@ -588,7 +691,7 @@ namespace Stock_Application
 
             try
             {
-                checkValidBuyOrderData(tmpCustomer, tmpHost, tmpPort, tmpAmount, tmpShareToBuy, tmpMaxBuyValue);
+                checkValidBuyOrderData(tmpCustomer, hostURL, tmpAmount, tmpShareToBuy, tmpMaxBuyValue);
             }
             catch (Exception ex)
             {
@@ -598,7 +701,7 @@ namespace Stock_Application
             }
 
             //if all checks are done with success the order can be placed
-            placeBuyOrder(tmpCustomer, tmpHost, tmpPort, tmpAmount, tmpShareToBuy, tmpMaxBuyValue);
+            placeBuyOrder(tmpCustomer, hostURL, tmpAmount, tmpShareToBuy, tmpMaxBuyValue);
         }
 
         /// <summary>
@@ -609,39 +712,38 @@ namespace Stock_Application
         /// <param name="tmpPort"></param>
         /// <param name="tmpAmount"></param>
         /// <param name="tmpShareToBuy"></param>
-        private void placeBuyOrder(Customer tmpCustomer, string tmpHost, int tmpPort, int tmpAmount, GridViewRowInfo tmpShareToBuy, double tmpMaxBuyValue)
+        private async void placeBuyOrder(Customer tmpCustomer, string tmpHostURL, int tmpAmount, GridViewRowInfo tmpShareToBuy, double tmpMaxBuyValue)
         {
-            RestClient client = new RestClient();
+            //reset client object if there is a problem with server and request can not be handled
+            client.CancelPendingRequests();
+            client.Dispose();
+            client = null;
+            client = new HttpClient();
 
-            client.Host = tmpHost;
-            client.Port = tmpPort;
-
-            //request for placing an order
-            RestRequest request = new RestRequest("/boerse/buy");
-            //https is not supported by this method -> gives error on "Niemansland" stock because this is using https only 
-            request.HttpMethod = Grapevine.Shared.HttpMethod.POST;
-            //set payloads format to json
-            request.ContentType = ContentType.JSON;
+            client.BaseAddress = new Uri(tmpHostURL);
+            client.DefaultRequestHeaders.Accept.Clear();
+            client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
             //generate order object to Json serialize it afterwards
             Order tmpOrder = new Order(Guid.NewGuid().ToString(), tmpShareToBuy.Cells[0].Value.ToString(), tmpAmount.ToString(), tmpMaxBuyValue.ToString(), string.Empty);
 
             //generate JSON payload for POST
             string tmpPayload = Newtonsoft.Json.JsonConvert.SerializeObject(tmpOrder);
-            request.Payload = tmpPayload;
 
-            IRestResponse respond = null;
+            StringContent httpContent = new StringContent(tmpPayload, Encoding.UTF8, "application/json");
+
+            HttpResponseMessage response = null;
             try
             {
-                //send the post request to server
-                respond = client.Execute(request);
+                //execute post to server
+                response = await client.PostAsync("boerse/buy", httpContent);
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                Debug.Print(ex.Message);
+                MessageBox.Show("Server is not reachable. Please retry alter.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
-            if (respond.StatusCode == HttpStatusCode.InternalServerError)
+            if (response?.StatusCode == HttpStatusCode.InternalServerError || response == null)
             {
                 MessageBox.Show("Internal server error!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
@@ -650,15 +752,12 @@ namespace Stock_Application
                 MessageBox.Show("Order was succusfully placed at server´s stock.", "Order placed.", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
                 //if placing the order was successful the order has to be stored for the client application
-                addDueOrderItem(new Tuple<string, string, string, int>(tmpOrder.orderID.ToString(), tmpCustomer.GUID, tmpHost, tmpPort));
+                addDueOrderItem(new Tuple<string, string, string>(tmpOrder.orderID.ToString(), tmpCustomer.GUID, tmpHostURL));
 
                 //negative because the customer now has less money available
                 setCustomersEquityByGuid(tmpCustomer.GUID, (-1 * tmpAmount * tmpMaxBuyValue));
             }
             resetTab3Controls();
-
-            client = null;
-            request = null;
         }
 
         /// <summary>
@@ -701,10 +800,10 @@ namespace Stock_Application
         /// <summary>
         /// Adds a new due order to local list and DB
         /// </summary>
-        private async void addDueOrderItem(Tuple<string, string, string, int> tmpTuple)
+        private async void addDueOrderItem(Tuple<string, string, string> tmpTuple)
         {
             //add it to local list
-            LstDueOrders.Add(tmpTuple);
+            insertDueList.Add(tmpTuple);
 
             try
             {
@@ -712,8 +811,7 @@ namespace Stock_Application
             {
                 {"OrderGuid", tmpTuple.Item1 },
                 {"CustomerGuid", tmpTuple.Item2 },
-                {"Host", tmpTuple.Item3 },
-                {"Port", tmpTuple.Item4 }
+                {"Host", tmpTuple.Item3 }
             };
                 await db_connection.dueOrderTable.InsertOneAsync(newEntry);
             }
@@ -741,7 +839,7 @@ namespace Stock_Application
         /// <param name="tmpPort"></param>
         /// <param name="tmpAmount"></param>
         /// <returns></returns>
-        private void checkValidBuyOrderData(Customer tmpCustomer, string tmpHost, int tmpPort, int tmpAmount, GridViewRowInfo tmpShareToBuy, double tmpMaxBuyValue)
+        private void checkValidBuyOrderData(Customer tmpCustomer, string tmpHostURL, int tmpAmount, GridViewRowInfo tmpShareToBuy, double tmpMaxBuyValue)
         {
             if (tmpCustomer == null)
             {
@@ -749,7 +847,7 @@ namespace Stock_Application
                 throw new NullReferenceException();
             }
 
-            if (tmpHost == string.Empty || tmpPort < 0)
+            if (tmpHostURL == string.Empty)
             {
                 throw new NullReferenceException();
             }
@@ -789,6 +887,8 @@ namespace Stock_Application
                 throw new Exception();
             }
         }
+
+
 
 
 

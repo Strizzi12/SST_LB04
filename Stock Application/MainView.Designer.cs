@@ -28,9 +28,9 @@
         /// </summary>
         private void InitializeComponent()
         {
-            Telerik.WinControls.UI.TableViewDefinition tableViewDefinition8 = new Telerik.WinControls.UI.TableViewDefinition();
-            Telerik.WinControls.UI.TableViewDefinition tableViewDefinition9 = new Telerik.WinControls.UI.TableViewDefinition();
-            Telerik.WinControls.UI.TableViewDefinition tableViewDefinition7 = new Telerik.WinControls.UI.TableViewDefinition();
+            Telerik.WinControls.UI.TableViewDefinition tableViewDefinition1 = new Telerik.WinControls.UI.TableViewDefinition();
+            Telerik.WinControls.UI.TableViewDefinition tableViewDefinition2 = new Telerik.WinControls.UI.TableViewDefinition();
+            Telerik.WinControls.UI.TableViewDefinition tableViewDefinition3 = new Telerik.WinControls.UI.TableViewDefinition();
             Telerik.WinControls.UI.RadListDataItem radListDataItem1 = new Telerik.WinControls.UI.RadListDataItem();
             Telerik.WinControls.UI.RadListDataItem radListDataItem2 = new Telerik.WinControls.UI.RadListDataItem();
             Telerik.WinControls.UI.RadListDataItem radListDataItem3 = new Telerik.WinControls.UI.RadListDataItem();
@@ -38,6 +38,7 @@
             Telerik.WinControls.UI.RadListDataItem radListDataItem5 = new Telerik.WinControls.UI.RadListDataItem();
             Telerik.WinControls.UI.RadListDataItem radListDataItem6 = new Telerik.WinControls.UI.RadListDataItem();
             Telerik.WinControls.UI.RadListDataItem radListDataItem7 = new Telerik.WinControls.UI.RadListDataItem();
+            Telerik.WinControls.UI.RadListDataItem radListDataItem8 = new Telerik.WinControls.UI.RadListDataItem();
             this.office2013DarkTheme1 = new Telerik.WinControls.Themes.Office2013DarkTheme();
             this.tabControl = new System.Windows.Forms.TabControl();
             this.tabPage1 = new System.Windows.Forms.TabPage();
@@ -62,14 +63,14 @@
             this.label2 = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
             this.tabPage3 = new System.Windows.Forms.TabPage();
+            this.txtMaxBuyValue = new Telerik.WinControls.UI.RadMaskedEditBox();
+            this.label8 = new System.Windows.Forms.Label();
+            this.btnSendBuyOrder = new Telerik.WinControls.UI.RadButton();
+            this.label7 = new System.Windows.Forms.Label();
+            this.txtShareAmount = new Telerik.WinControls.UI.RadMaskedEditBox();
             this.grdAvailableShares = new Telerik.WinControls.UI.RadGridView();
             this.radDropDownList1 = new Telerik.WinControls.UI.RadDropDownList();
             this.label6 = new System.Windows.Forms.Label();
-            this.txtShareAmount = new Telerik.WinControls.UI.RadMaskedEditBox();
-            this.label7 = new System.Windows.Forms.Label();
-            this.btnSendBuyOrder = new Telerik.WinControls.UI.RadButton();
-            this.label8 = new System.Windows.Forms.Label();
-            this.txtMaxBuyValue = new Telerik.WinControls.UI.RadMaskedEditBox();
             this.tabControl.SuspendLayout();
             this.tabPage1.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this.grdGridCustomers)).BeginInit();
@@ -87,12 +88,12 @@
             ((System.ComponentModel.ISupportInitialize)(this.grdCustomerDepot)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.grdCustomerDepot.MasterTemplate)).BeginInit();
             this.tabPage3.SuspendLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.txtMaxBuyValue)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.btnSendBuyOrder)).BeginInit();
+            ((System.ComponentModel.ISupportInitialize)(this.txtShareAmount)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.grdAvailableShares)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.grdAvailableShares.MasterTemplate)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this.radDropDownList1)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.txtShareAmount)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.btnSendBuyOrder)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.txtMaxBuyValue)).BeginInit();
             ((System.ComponentModel.ISupportInitialize)(this)).BeginInit();
             this.SuspendLayout();
             // 
@@ -143,7 +144,7 @@
             this.grdGridCustomers.MasterTemplate.AllowEditRow = false;
             this.grdGridCustomers.MasterTemplate.AllowRowHeaderContextMenu = false;
             this.grdGridCustomers.MasterTemplate.AutoSizeColumnsMode = Telerik.WinControls.UI.GridViewAutoSizeColumnsMode.Fill;
-            this.grdGridCustomers.MasterTemplate.ViewDefinition = tableViewDefinition8;
+            this.grdGridCustomers.MasterTemplate.ViewDefinition = tableViewDefinition1;
             this.grdGridCustomers.Name = "grdGridCustomers";
             this.grdGridCustomers.Size = new System.Drawing.Size(1189, 748);
             this.grdGridCustomers.TabIndex = 13;
@@ -293,7 +294,7 @@
             this.grdCustomerDepot.MasterTemplate.AllowEditRow = false;
             this.grdCustomerDepot.MasterTemplate.AllowRowHeaderContextMenu = false;
             this.grdCustomerDepot.MasterTemplate.AutoSizeColumnsMode = Telerik.WinControls.UI.GridViewAutoSizeColumnsMode.Fill;
-            this.grdCustomerDepot.MasterTemplate.ViewDefinition = tableViewDefinition9;
+            this.grdCustomerDepot.MasterTemplate.ViewDefinition = tableViewDefinition2;
             this.grdCustomerDepot.Name = "grdCustomerDepot";
             this.grdCustomerDepot.Size = new System.Drawing.Size(1189, 687);
             this.grdCustomerDepot.TabIndex = 14;
@@ -389,6 +390,63 @@
             this.tabPage3.Text = "Create buy order";
             this.tabPage3.UseVisualStyleBackColor = true;
             // 
+            // txtMaxBuyValue
+            // 
+            this.txtMaxBuyValue.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.txtMaxBuyValue.Location = new System.Drawing.Point(209, 846);
+            this.txtMaxBuyValue.Margin = new System.Windows.Forms.Padding(5);
+            this.txtMaxBuyValue.Mask = "C";
+            this.txtMaxBuyValue.MaskType = Telerik.WinControls.UI.MaskType.Numeric;
+            this.txtMaxBuyValue.Name = "txtMaxBuyValue";
+            this.txtMaxBuyValue.Size = new System.Drawing.Size(209, 37);
+            this.txtMaxBuyValue.TabIndex = 19;
+            this.txtMaxBuyValue.TabStop = false;
+            this.txtMaxBuyValue.Text = "0,00 €";
+            this.txtMaxBuyValue.ThemeName = "Office2013Dark";
+            // 
+            // label8
+            // 
+            this.label8.AutoSize = true;
+            this.label8.Location = new System.Drawing.Point(203, 800);
+            this.label8.Name = "label8";
+            this.label8.Size = new System.Drawing.Size(339, 32);
+            this.label8.TabIndex = 18;
+            this.label8.Text = "Max. buy value per share:";
+            // 
+            // btnSendBuyOrder
+            // 
+            this.btnSendBuyOrder.Location = new System.Drawing.Point(950, 820);
+            this.btnSendBuyOrder.Margin = new System.Windows.Forms.Padding(5);
+            this.btnSendBuyOrder.Name = "btnSendBuyOrder";
+            this.btnSendBuyOrder.Size = new System.Drawing.Size(247, 52);
+            this.btnSendBuyOrder.TabIndex = 21;
+            this.btnSendBuyOrder.Text = "Submit buy order";
+            this.btnSendBuyOrder.ThemeName = "Office2013Dark";
+            this.btnSendBuyOrder.Click += new System.EventHandler(this.btnSendBuyOrder_Click);
+            // 
+            // label7
+            // 
+            this.label7.AutoSize = true;
+            this.label7.Location = new System.Drawing.Point(580, 800);
+            this.label7.Name = "label7";
+            this.label7.Size = new System.Drawing.Size(328, 32);
+            this.label7.TabIndex = 17;
+            this.label7.Text = "Amount of shares to buy:";
+            // 
+            // txtShareAmount
+            // 
+            this.txtShareAmount.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
+            this.txtShareAmount.Location = new System.Drawing.Point(586, 846);
+            this.txtShareAmount.Margin = new System.Windows.Forms.Padding(5);
+            this.txtShareAmount.Mask = "g";
+            this.txtShareAmount.MaskType = Telerik.WinControls.UI.MaskType.Numeric;
+            this.txtShareAmount.Name = "txtShareAmount";
+            this.txtShareAmount.Size = new System.Drawing.Size(209, 37);
+            this.txtShareAmount.TabIndex = 20;
+            this.txtShareAmount.TabStop = false;
+            this.txtShareAmount.Text = "0";
+            this.txtShareAmount.ThemeName = "Office2013Dark";
+            // 
             // grdAvailableShares
             // 
             this.grdAvailableShares.AutoScroll = true;
@@ -407,7 +465,7 @@
             this.grdAvailableShares.MasterTemplate.AllowEditRow = false;
             this.grdAvailableShares.MasterTemplate.AllowRowHeaderContextMenu = false;
             this.grdAvailableShares.MasterTemplate.AutoSizeColumnsMode = Telerik.WinControls.UI.GridViewAutoSizeColumnsMode.Fill;
-            this.grdAvailableShares.MasterTemplate.ViewDefinition = tableViewDefinition7;
+            this.grdAvailableShares.MasterTemplate.ViewDefinition = tableViewDefinition3;
             this.grdAvailableShares.Name = "grdAvailableShares";
             this.grdAvailableShares.Size = new System.Drawing.Size(1189, 687);
             this.grdAvailableShares.TabIndex = 15;
@@ -431,6 +489,8 @@
             radListDataItem6.Text = "Best Korea";
             radListDataItem7.Tag = "6";
             radListDataItem7.Text = "Bhutan";
+            radListDataItem8.Tag = "7";
+            radListDataItem8.Text = "Oregon";
             this.radDropDownList1.Items.Add(radListDataItem1);
             this.radDropDownList1.Items.Add(radListDataItem2);
             this.radDropDownList1.Items.Add(radListDataItem3);
@@ -438,6 +498,7 @@
             this.radDropDownList1.Items.Add(radListDataItem5);
             this.radDropDownList1.Items.Add(radListDataItem6);
             this.radDropDownList1.Items.Add(radListDataItem7);
+            this.radDropDownList1.Items.Add(radListDataItem8);
             this.radDropDownList1.Location = new System.Drawing.Point(27, 58);
             this.radDropDownList1.Name = "radDropDownList1";
             this.radDropDownList1.Size = new System.Drawing.Size(270, 42);
@@ -454,68 +515,11 @@
             this.label6.TabIndex = 0;
             this.label6.Text = "Select stock market:";
             // 
-            // txtShareAmount
-            // 
-            this.txtShareAmount.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.txtShareAmount.Location = new System.Drawing.Point(586, 846);
-            this.txtShareAmount.Margin = new System.Windows.Forms.Padding(5);
-            this.txtShareAmount.Mask = "g";
-            this.txtShareAmount.MaskType = Telerik.WinControls.UI.MaskType.Numeric;
-            this.txtShareAmount.Name = "txtShareAmount";
-            this.txtShareAmount.Size = new System.Drawing.Size(209, 37);
-            this.txtShareAmount.TabIndex = 20;
-            this.txtShareAmount.TabStop = false;
-            this.txtShareAmount.Text = "0";
-            this.txtShareAmount.ThemeName = "Office2013Dark";
-            // 
-            // label7
-            // 
-            this.label7.AutoSize = true;
-            this.label7.Location = new System.Drawing.Point(580, 800);
-            this.label7.Name = "label7";
-            this.label7.Size = new System.Drawing.Size(328, 32);
-            this.label7.TabIndex = 17;
-            this.label7.Text = "Amount of shares to buy:";
-            // 
-            // btnSendBuyOrder
-            // 
-            this.btnSendBuyOrder.Location = new System.Drawing.Point(950, 820);
-            this.btnSendBuyOrder.Margin = new System.Windows.Forms.Padding(5);
-            this.btnSendBuyOrder.Name = "btnSendBuyOrder";
-            this.btnSendBuyOrder.Size = new System.Drawing.Size(247, 52);
-            this.btnSendBuyOrder.TabIndex = 21;
-            this.btnSendBuyOrder.Text = "Submit buy order";
-            this.btnSendBuyOrder.ThemeName = "Office2013Dark";
-            this.btnSendBuyOrder.Click += new System.EventHandler(this.btnSendBuyOrder_Click);
-            // 
-            // label8
-            // 
-            this.label8.AutoSize = true;
-            this.label8.Location = new System.Drawing.Point(203, 800);
-            this.label8.Name = "label8";
-            this.label8.Size = new System.Drawing.Size(339, 32);
-            this.label8.TabIndex = 18;
-            this.label8.Text = "Max. buy value per share:";
-            // 
-            // txtMaxBuyValue
-            // 
-            this.txtMaxBuyValue.Font = new System.Drawing.Font("Segoe UI", 10F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
-            this.txtMaxBuyValue.Location = new System.Drawing.Point(209, 846);
-            this.txtMaxBuyValue.Margin = new System.Windows.Forms.Padding(5);
-            this.txtMaxBuyValue.Mask = "C";
-            this.txtMaxBuyValue.MaskType = Telerik.WinControls.UI.MaskType.Numeric;
-            this.txtMaxBuyValue.Name = "txtMaxBuyValue";
-            this.txtMaxBuyValue.Size = new System.Drawing.Size(209, 37);
-            this.txtMaxBuyValue.TabIndex = 19;
-            this.txtMaxBuyValue.TabStop = false;
-            this.txtMaxBuyValue.Text = "0,00 €";
-            this.txtMaxBuyValue.ThemeName = "Office2013Dark";
-            // 
             // MainView
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(11F, 24F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(1235, 943);
+            this.ClientSize = new System.Drawing.Size(1235, 957);
             this.Controls.Add(this.tabControl);
             this.Font = new System.Drawing.Font("Microsoft Sans Serif", 12F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
@@ -548,12 +552,12 @@
             ((System.ComponentModel.ISupportInitialize)(this.grdCustomerDepot)).EndInit();
             this.tabPage3.ResumeLayout(false);
             this.tabPage3.PerformLayout();
+            ((System.ComponentModel.ISupportInitialize)(this.txtMaxBuyValue)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.btnSendBuyOrder)).EndInit();
+            ((System.ComponentModel.ISupportInitialize)(this.txtShareAmount)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.grdAvailableShares.MasterTemplate)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.grdAvailableShares)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this.radDropDownList1)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.txtShareAmount)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.btnSendBuyOrder)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.txtMaxBuyValue)).EndInit();
             ((System.ComponentModel.ISupportInitialize)(this)).EndInit();
             this.ResumeLayout(false);
 
