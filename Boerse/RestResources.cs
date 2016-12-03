@@ -156,7 +156,7 @@ public class BoersenResource
 					//Create a Response Order
 					ResponseOrder responseOrder = new ResponseOrder();
 					responseOrder.orderID = deserializedOrderID;
-					responseOrder.statusOfOrder = deserializedStatusOfOrder;
+					responseOrder.status = deserializedStatusOfOrder;
 					responseOrder.amount = deserializedAmount;
 					responseOrder.price = course;
 					string response = JsonConvert.SerializeObject(responseOrder);

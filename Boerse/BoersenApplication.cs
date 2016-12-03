@@ -23,9 +23,9 @@ namespace Boerse
 		{
 			Debug.WriteLine("Started!");
 			ServerSettings settings = new ServerSettings();
-			//settings.Host = "ec2-35-164-218-97.us-west-2.compute.amazonaws.com";    //93.82.35.63 
-			settings.Host = "localhost";    //93.82.35.63 
-			settings.Port = "1234";
+			settings.Host = "ec2-35-164-218-97.us-west-2.compute.amazonaws.com";    //93.82.35.63 
+			//settings.Host = "localhost";    //93.82.35.63 
+			settings.Port = "8080";
 			insertInitialData();
 			try
 			{
@@ -50,8 +50,8 @@ namespace Boerse
 		{
 			while(true)
 			{
-				int minutes = 5;
-				Thread.Sleep(1000 * 60 * minutes);
+				int minutes = 1;
+				Thread.Sleep(1000 * 30 * minutes);
 				//Do work here
 				Console.WriteLine("Starting to process the orders!");
 				//order the limit
@@ -93,6 +93,7 @@ namespace Boerse
 							int deserializedTimestamp = Int32.Parse(order.GetElement("timestamp").Value.ToString(), System.Globalization.NumberStyles.Any);
 							int deserializedUseCase = Int32.Parse(order.GetElement("useCase").Value.ToString(), System.Globalization.NumberStyles.Any);
 
+							//Store them in an object for further processing
 							MainOrder mainOrder = new MainOrder();
 							mainOrder.receivedOrder.orderID = deserializedOrderID;
 							mainOrder.receivedOrder.aktienID = deserializedAktienID;
@@ -104,6 +105,9 @@ namespace Boerse
 
 							orderList.Add(mainOrder);
 						}
+						//If the orderlist is empty, nothing should be done!
+						if(orderList.Count == 0)
+							continue;
 
 						//Look at each order, differentiate each limit (if buy or sell) an add up their amount from the different order.
 						List<KeyVal<double, int, int>> limitList = new List<KeyVal<double, int, int>>();
@@ -325,6 +329,8 @@ namespace Boerse
 
 				result += JsonConvert.SerializeObject(stock);
 			}
+			if(entrys.Count == 7)
+				createMoreStocks();
 			if(!result.Equals(string.Empty))
 				return;
 
@@ -388,6 +394,72 @@ namespace Boerse
 				{"name", "Super Firma von RUSH B"},
 				{"course", 100},
 				{"amount", 1000}
+			};
+			dbConnectionStocks._db.InsertOne(entry7);
+		}
+
+		private static void createMoreStocks()
+		{
+			var entry = new BsonDocument
+			{
+				{"aktienID", Guid.NewGuid().ToString() },
+				{"name", "Facebook"},
+				{"course", 100},
+				{"amount", 1000000}
+			};
+			dbConnectionStocks._db.InsertOne(entry);
+
+			var entry2 = new BsonDocument
+			{
+				{"aktienID", Guid.NewGuid().ToString() },
+				{"name", "Google"},
+				{"course", 70},
+				{"amount", 1000000}
+			};
+			dbConnectionStocks._db.InsertOne(entry2);
+
+			var entry3 = new BsonDocument
+			{
+				{"aktienID", Guid.NewGuid().ToString() },
+				{"name", "Nintendo"},
+				{"course", 50},
+				{"amount", 1000000}
+			};
+			dbConnectionStocks._db.InsertOne(entry3);
+
+			var entry4 = new BsonDocument
+			{
+				{"aktienID", Guid.NewGuid().ToString() },
+				{"name", "CSGO"},
+				{"course", 70},
+				{"amount", 9999999}
+			};
+			dbConnectionStocks._db.InsertOne(entry4);
+
+			var entry5 = new BsonDocument
+			{
+				{"aktienID", Guid.NewGuid().ToString() },
+				{"name", "Russia"},
+				{"course", 10},
+				{"amount", 100000}
+			};
+			dbConnectionStocks._db.InsertOne(entry5);
+
+			var entry6 = new BsonDocument
+			{
+				{"aktienID", Guid.NewGuid().ToString() },
+				{"name", "Cobblestone"},
+				{"course", 15},
+				{"amount", 15123410}
+			};
+			dbConnectionStocks._db.InsertOne(entry6);
+
+			var entry7 = new BsonDocument
+			{
+				{"aktienID", Guid.NewGuid().ToString() },
+				{"name", "Dust 2"},
+				{"course", 100},
+				{"amount", 987654321}
 			};
 			dbConnectionStocks._db.InsertOne(entry7);
 		}

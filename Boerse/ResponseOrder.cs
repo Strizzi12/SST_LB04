@@ -11,7 +11,7 @@ namespace Boerse
 		public Guid orderID { get; set; }
 		public double price { get; set; }
 		public int amount { get; set; }
-		public int statusOfOrder { get; set; }     // 0 if successfull, 1 in progress, 2 denied, 3 not enough goods, 4 wrong price
+		public int status { get; set; }     // 0 if successfull, 1 in progress, 2 denied, 3 not enough goods, 4 wrong price
 		public string hash { get; }
 	}
 }
