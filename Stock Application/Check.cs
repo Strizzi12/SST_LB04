@@ -14,7 +14,7 @@ namespace Stock_Application
         /// <summary>
         /// ID of the order for which a responds gets polled
         /// </summary>
-        public Guid orderID;
+        public string orderID;
 
         /// <summary>
         /// Used for additional excercise
@@ -28,7 +28,7 @@ namespace Stock_Application
         /// <param name="tmpGuid"></param>
         public Check(string tmpGuid)
         {
-            orderID = Guid.Parse(tmpGuid);
+            orderID = tmpGuid;
         }
     }
 }

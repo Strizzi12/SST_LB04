@@ -86,6 +86,7 @@ namespace Stock_Application
         {
             //List to remove done answered orders
             List<DueOrder> listToRemove = new List<DueOrder>();
+
             while (true)
             {
                 syncDueOrderList(listToRemove);
@@ -122,7 +123,7 @@ namespace Stock_Application
 
                     //extract status from json object
                     int status = int.MinValue;
-                    status = await evaluateCheckResponse(response);
+                    status = evaluateCheckResponse(response).Result;
 
                     switch (status)
                     {
@@ -138,16 +139,26 @@ namespace Stock_Application
                             break;
                         //denied
                         case 2:
+                            correctCustomersBalance(response, dueOrderItem);
+
                             Debug.Print("Order was denied!");
                             listToRemove.Add(dueOrderItem);
                             break;
                         //not enough goods
                         case 3:
+                            //shares can be added as well (logic for not enough goods is in the addShareToCustomerDepot)
+                            addShareToCustomerDepot(response, dueOrderItem);
+
+                            //but equity of customer has to be correct for not shares which were not available
+                            currectCustomerBalanceNotEnoughGoods(response, dueOrderItem);
+
                             Debug.Print("Not enough goods for order!");
                             listToRemove.Add(dueOrderItem);
                             break;
                         //wrong price
                         case 4:
+                            correctCustomersBalance(response, dueOrderItem);
+
                             Debug.Print("Wrong price for order!");
                             listToRemove.Add(dueOrderItem);
                             break;
@@ -161,31 +172,123 @@ namespace Stock_Application
         }
 
         /// <summary>
+        /// Correction if not all of the goods were bought
+        /// </summary>
+        /// <param name="response"></param>
+        /// <param name="dueOrderItem"></param>
+        private void currectCustomerBalanceNotEnoughGoods(HttpResponseMessage response, DueOrder dueOrderItem)
+        {
+            //bindinglist is not nice for searching
+            List<Customer> tmpCusList = new List<Customer>(LstCustomers);
+
+            //is precise bc guid is unique
+            Customer tmpCustomer = tmpCusList.Find(x => x.GUID == dueOrderItem.buyingCustomer.GUID);
+
+            //calcs the equity: "current equity" + ("amount user wanted to buy" - "amount user actually bought") * "price per share"
+            tmpCustomer.Equity = (double.Parse(tmpCustomer.Equity, System.Globalization.NumberStyles.Any) + ((dueOrderItem.placedOrder.amount - int.Parse(getPropertyFromResponse(response, "amount").Result)) * dueOrderItem.placedOrder.limit)).ToString();
+
+            LstCustomers = new BindingList<Customer>(tmpCusList);
+        }
+
+        /// <summary>
+        /// Corrects the customers balance if a order was not completed successfully
+        /// </summary>
+        private void correctCustomersBalance(HttpResponseMessage response, DueOrder dueOrderItem)
+        {
+            //bindinglist is not nice for searching
+            List<Customer> tmpCusList = new List<Customer>(LstCustomers);
+
+            //is precise bc guid is unique
+            Customer tmpCustomer = tmpCusList.Find(x => x.GUID == dueOrderItem.buyingCustomer.GUID);
+
+            tmpCustomer.Equity = (double.Parse(tmpCustomer.Equity, System.Globalization.NumberStyles.Any) + (dueOrderItem.placedOrder.amount * dueOrderItem.placedOrder.limit)).ToString();
+
+            LstCustomers = new BindingList<Customer>(tmpCusList);
+        }
+
+        /// <summary>
         /// Adds a given share to the customers depot
         /// </summary>
-        private async void addShareToCustomerDepot(HttpResponseMessage response, DueOrder dueOrderItem)
+        private void addShareToCustomerDepot(HttpResponseMessage response, DueOrder dueOrderItem)
         {
             try
             {
-                string orderGuid = await getPropertyFromResponse(response, "orderID");
+                List<Customer> tmpCusList = new List<Customer>(LstCustomers);
+                Customer tmpCustomer = tmpCusList.Find(x => x.GUID == dueOrderItem.buyingCustomer.GUID);
+                List<Share> tmpDepot = new List<Share>(tmpCustomer.Depot.lstShares);
 
-                double price = double.Parse(await getPropertyFromResponse(response, "price"), System.Globalization.NumberStyles.Any);
+                int index = tmpDepot.FindIndex(f => f.GUID == dueOrderItem.boughtShare.GUID);
 
-                int amount = int.Parse(await getPropertyFromResponse(response, "amount"), System.Globalization.NumberStyles.Any);
+                //aktien von diesem typ bereits vorhanden
+                if (index >= 0)
+                {
+                    tmpDepot[index].Amount = (int.Parse(tmpDepot[index].Amount, System.Globalization.NumberStyles.Any) + int.Parse(getPropertyFromResponse(response, "amount").Result, System.Globalization.NumberStyles.Any)).ToString();
+                    //not quite right but enough for this exercise
+                    tmpDepot[index].Price = getPropertyFromResponse(response, "price").Result;
 
-                //Guid from the bought share
-                string shareGuid = dueOrderItem.boughtShare.GUID;
+                    //update entry in DB
+                    updateShareInDB(tmpDepot[index]);
+                }
+                //aktie noch nicht vorhanden
+                else
+                {
+                    Share tmpShare = new Share(dueOrderItem.boughtShare.GUID, dueOrderItem.boughtShare.Name, getPropertyFromResponse(response, "price").Result, getPropertyFromResponse(response, "amount").Result, dueOrderItem.buyingCustomer.DepotGuid);
 
-                //host url required for getting full information about bought share
-                string hostURL = dueOrderItem.hostURL;
+                    tmpDepot.Add(tmpShare);
+                    addShareForCustomerInDB(tmpShare);
+                }
 
+                //check if all goods were bought -> if not adjust customers equity
+                if (!(int.Parse(getPropertyFromResponse(response, "amount").Result, System.Globalization.NumberStyles.Any) == dueOrderItem.placedOrder.amount))
+                {
+                    setCustomerEquityByGuidWithoutGUIUpdate(dueOrderItem.buyingCustomer.GUID, (dueOrderItem.placedOrder.amount - int.Parse(getPropertyFromResponse(response, "amount").Result, System.Globalization.NumberStyles.Any)) * dueOrderItem.placedOrder.limit);
+                }
 
-
+                //save back changes to local lists
+                tmpCustomer.Depot.lstShares = new BindingList<Share>(tmpDepot);
+                LstCustomers = new BindingList<Customer>(tmpCusList);
 
             }
             catch (Exception ex)
             {
                 Debug.Print(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Updates a share in DB by its Guid
+        /// </summary>
+        private async void updateShareInDB(Share tmpShare)
+        {
+            var filter = Builders<BsonDocument>.Filter.Eq("GUID", tmpShare.GUID);
+            var update = Builders<BsonDocument>.Update
+                .Set("Price", tmpShare.Price)
+                .Set("Amount", tmpShare.Amount)
+                .Set("DepotGUID", tmpShare.DepotGUID);
+            var result = await db_connection.shareTable.UpdateOneAsync(filter, update);
+        }
+
+        /// <summary>
+        /// Adds a share for a customer to the DB
+        /// </summary>
+        private async void addShareForCustomerInDB(Share tmpShare)
+        {
+            try
+            {
+                BsonDocument newEntry = new BsonDocument
+            {
+                {"GUID", tmpShare.GUID},
+                {"Name", tmpShare.Name},
+                {"Price", tmpShare.Price },
+                {"Amount", tmpShare.Amount },
+                {"DepotGUID", tmpShare.DepotGUID}
+            };
+                await db_connection.shareTable.InsertOneAsync(newEntry);
+            }
+            catch (Exception ex)
+            {
+                Debug.Print(ex.Message);
+                return;
             }
         }
 
@@ -226,7 +329,7 @@ namespace Stock_Application
 
             if (response != null)
             {
-                if (response.IsSuccessStatusCode)
+                if (response.StatusCode != HttpStatusCode.InternalServerError)
                 {
                     //getting json strin from response
                     string jsonResponseString = await response.Content.ReadAsStringAsync();
@@ -631,9 +734,6 @@ namespace Stock_Application
         /// <param name="tmpCustomer"></param>
         private void setDepotGridDataSource(Customer tmpCustomer)
         {
-            //manual add of a share for test purposes
-            //tmpCustomer.Depot.AddShareToDepot(new Share("1","mytestshare","1000", "1", tmpCustomer.DepotGuid));
-
             grdCustomerDepot.DataSource = tmpCustomer.Depot.lstShares;
         }
 
@@ -846,6 +946,30 @@ namespace Stock_Application
         /// <summary>
         /// Sets the customer´s equity depending on the change value
         /// No check for valid values; has to be done before
+        /// Without GUI update so it can be used in the backgroundworker
+        /// </summary>
+        /// <param name="customerGuid"></param>
+        /// <param name="changeEquity"></param>
+        private void setCustomerEquityByGuidWithoutGUIUpdate(string customerGuid, double changeEquity)
+        {
+            var tmpCustomer = from item in LstCustomers
+                              where item.GUID.Equals(customerGuid)
+                              select item;
+            if (tmpCustomer.Count() > 0)
+            {
+                //get current equity of customer
+                double tmpEquity = double.Parse((tmpCustomer.First() as Customer).Equity, System.Globalization.NumberStyles.Any);
+                tmpEquity += changeEquity;
+
+                (tmpCustomer.First() as Customer).Equity = tmpEquity.ToString();
+
+                updateCustomerInDB(tmpCustomer.First() as Customer);
+            }
+        }
+
+        /// <summary>
+        /// Sets the customer´s equity depending on the change value
+        /// No check for valid values; has to be done before
         /// </summary>
         /// <param name="customerGuid"></param>
         /// <param name="changeEquity">+ if customers gained money, - if he lost money</param>
@@ -991,7 +1115,31 @@ namespace Stock_Application
             }
         }
 
+        /// <summary>
+        /// Reload displaying data when tabcontrols tabs get changed
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void tabControl_Selected(object sender, TabControlEventArgs e)
+        {
+            if (lblGuid.Text != string.Empty && lblGuid.Text != null)
+            {
+                Customer tmpCustomer = getCustomerByGUID(lblGuid.Text);
 
+                grdCustomerDepot.BeginUpdate();
+                grdCustomerDepot.DataSource = new BindingList<Share>(tmpCustomer.Depot.lstShares);
+                grdCustomerDepot.EndUpdate();
+                grdCustomerDepot.Refresh();
+                lblEquity.Text = tmpCustomer.Equity;
+                lblEquity.Refresh();
+            }
+
+            //get updated customer entries
+            grdGridCustomers.BeginUpdate();
+            grdGridCustomers.DataSource = LstCustomers;
+            grdGridCustomers.EndUpdate();
+            grdGridCustomers.Refresh();
+        }
 
 
 
