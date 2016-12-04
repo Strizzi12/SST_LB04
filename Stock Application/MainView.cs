@@ -30,7 +30,7 @@ namespace Stock_Application
         /// <summary>
         /// Temporary list for inserting new due orders when possible
         /// </summary>
-        private List<Tuple<string, string, string>> insertDueList = new List<Tuple<string, string, string>>();
+        private List<DueOrder> insertDueList = new List<DueOrder>();
 
         /// <summary>
         /// List of customer objects which are available during runtime
@@ -46,11 +46,8 @@ namespace Stock_Application
 
         /// <summary>
         /// Holds the outstanding orders
-        /// Item1 is the orderID, Item2 is the CustomerID which placed the order, item3 is the host url
-        /// items contain all required information to poll for the respond to an order
-        /// And yes i just dont want to use classes :P
         /// </summary>
-        public List<Tuple<string, string, string>> LstDueOrders = new List<Tuple<string, string, string>>();
+        public List<DueOrder> LstDueOrders = new List<DueOrder>();
 
         /// <summary>
         /// Represents the selected customer from Tab1
@@ -88,7 +85,7 @@ namespace Stock_Application
         private async void pollResponses(object sender, DoWorkEventArgs e)
         {
             //List to remove done answered orders
-            List<Tuple<string, string, string>> listToRemove = new List<Tuple<string, string, string>>();
+            List<DueOrder> listToRemove = new List<DueOrder>();
             while (true)
             {
                 syncDueOrderList(listToRemove);
@@ -101,12 +98,12 @@ namespace Stock_Application
                     client = null;
                     client = new HttpClient();
 
-                    client.BaseAddress = new Uri(dueOrderItem.Item3);
+                    client.BaseAddress = new Uri(dueOrderItem.hostURL);
                     client.DefaultRequestHeaders.Accept.Clear();
                     client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 
                     //generate order object to Json serialize it afterwards
-                    Check tmpOrder = new Check(dueOrderItem.Item1);
+                    Check tmpOrder = new Check(dueOrderItem.placedOrder.orderID);
 
                     //generate JSON payload for POST
                     string tmpPayload = Newtonsoft.Json.JsonConvert.SerializeObject(tmpOrder);
@@ -131,8 +128,7 @@ namespace Stock_Application
                     {
                         //successful
                         case 0:
-
-
+                            addShareToCustomerDepot(response, dueOrderItem);
 
                             //if order was processed by stock delete it from dueOrderList
                             listToRemove.Add(dueOrderItem);
@@ -165,6 +161,61 @@ namespace Stock_Application
         }
 
         /// <summary>
+        /// Adds a given share to the customers depot
+        /// </summary>
+        private async void addShareToCustomerDepot(HttpResponseMessage response, DueOrder dueOrderItem)
+        {
+            try
+            {
+                string orderGuid = await getPropertyFromResponse(response, "orderID");
+
+                double price = double.Parse(await getPropertyFromResponse(response, "price"), System.Globalization.NumberStyles.Any);
+
+                int amount = int.Parse(await getPropertyFromResponse(response, "amount"), System.Globalization.NumberStyles.Any);
+
+                //Guid from the bought share
+                string shareGuid = dueOrderItem.boughtShare.GUID;
+
+                //host url required for getting full information about bought share
+                string hostURL = dueOrderItem.hostURL;
+
+
+
+
+            }
+            catch (Exception ex)
+            {
+                Debug.Print(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Gets the given property from a given http response msg
+        /// </summary>
+        /// <param name="response"></param>
+        /// <param name="propName">Json property name which should get returned</param>
+        /// <returns></returns>
+        private async Task<string> getPropertyFromResponse(HttpResponseMessage response, string propName)
+        {
+            try
+            {
+                //reads http content -> string
+                string jsonResponseString = await response.Content.ReadAsStringAsync();
+
+                //parses string to json object
+                JObject mystockpricelist = JObject.Parse(jsonResponseString);
+
+                //returns searched value
+                return mystockpricelist[propName].ToString();
+            }
+            catch (Exception ex)
+            {
+                Debug.Print(ex.Message);
+                return null;
+            }
+        }
+
+        /// <summary>
         /// Gets the json response from server and extracts the status of the order on server
         /// </summary>
         /// <param name="response"></param>
@@ -181,7 +232,7 @@ namespace Stock_Application
                     string jsonResponseString = await response.Content.ReadAsStringAsync();
 
                     JObject mystockpricelist = null;
-                    
+
                     try
                     {
                         mystockpricelist = JObject.Parse(jsonResponseString);
@@ -201,7 +252,6 @@ namespace Stock_Application
                     }
                 }
             }
-
             return status;
         }
 
@@ -209,7 +259,7 @@ namespace Stock_Application
         /// Syncs the list of due orders with closed and new orders
         /// </summary>
         /// <param name="listToRemove"></param>
-        private void syncDueOrderList(List<Tuple<string, string, string>> listToRemove)
+        private void syncDueOrderList(List<DueOrder> listToRemove)
         {
             foreach (var deleteItem in listToRemove)
             {
@@ -228,11 +278,11 @@ namespace Stock_Application
         /// Removes a due order from local list and DB
         /// </summary>
         /// <param name="itemToRemove"></param>
-        private void removeDueOrder(Tuple<string, string, string> itemToRemove)
+        private void removeDueOrder(DueOrder itemToRemove)
         {
             LstDueOrders.Remove(itemToRemove);
 
-            var filter = Builders<BsonDocument>.Filter.Eq("OrderGuid", itemToRemove.Item1);
+            var filter = Builders<BsonDocument>.Filter.Eq("OrderGuid", itemToRemove.placedOrder.orderID);
             db_connection.dueOrderTable.DeleteOne(filter);
         }
 
@@ -260,9 +310,9 @@ namespace Stock_Application
         /// <summary>
         /// Initial load of due orders from DB
         /// </summary>
-        private List<Tuple<string, string, string>> loadDueOrdersFromDB()
+        private List<DueOrder> loadDueOrdersFromDB()
         {
-            List<Tuple<string, string, string>> tmpDueOrderList = new List<Tuple<string, string, string>>();
+            List<DueOrder> tmpDueOrderList = new List<DueOrder>();
 
             try
             {
@@ -271,7 +321,7 @@ namespace Stock_Application
                 //getting values from DB to internal format
                 foreach (var dueOrderItem in dueOrderDB)
                 {
-                    tmpDueOrderList.Add(new Tuple<string, string, string>(dueOrderItem.GetElement("OrderGuid").Value.ToString(), dueOrderItem.GetElement("CustomerGuid").Value.ToString(), dueOrderItem.GetElement("Host").Value.ToString()));
+                    tmpDueOrderList.Add(generateDueOrderObject(dueOrderItem));
                 }
             }
             catch (Exception)
@@ -280,6 +330,34 @@ namespace Stock_Application
                 return null;
             }
             return tmpDueOrderList;
+        }
+
+        /// <summary>
+        /// Gets values from mongo DB response and creates due order item from it 
+        /// </summary>
+        /// <param name="dueOrderItem"></param>
+        /// <returns></returns>
+        private DueOrder generateDueOrderObject(BsonDocument dueOrderItem)
+        {
+            try
+            {
+                Order tmpOrder = new Order(dueOrderItem.GetElement("OrderGuid").Value.ToString(), dueOrderItem.GetElement("AktienGuid").Value.ToString(), dueOrderItem.GetElement("BoughtAmount").Value.ToString(), dueOrderItem.GetElement("PriceLimit").Value.ToString(), dueOrderItem.GetElement("OrderHash").Value.ToString());
+
+                Customer tmpCustomer = new Customer(dueOrderItem.GetElement("CustomerFirstname").Value.ToString(), dueOrderItem.GetElement("CustomerLastname").Value.ToString(), double.Parse(dueOrderItem.GetElement("CustomerEquity").Value.ToString(), System.Globalization.NumberStyles.Any), dueOrderItem.GetElement("CustomerGuid").Value.ToString(), "no data");
+
+                string tmpHostURL = dueOrderItem.GetElement("HostURL").Value.ToString();
+
+                Share tmpShare = new Share(dueOrderItem.GetElement("ShareGuid").Value.ToString(), dueOrderItem.GetElement("ShareName").Value.ToString(), dueOrderItem.GetElement("SharePrice").Value.ToString(), dueOrderItem.GetElement("ShareAmount").Value.ToString(), "no data");
+
+                DueOrder tmpDueOrder = new DueOrder(tmpOrder, tmpCustomer, tmpHostURL, tmpShare);
+
+                return tmpDueOrder;
+            }
+            catch (Exception ex)
+            {
+                Debug.Print(ex.Message);
+                return null;
+            }
         }
 
         /// <summary>
@@ -751,8 +829,13 @@ namespace Stock_Application
             {
                 MessageBox.Show("Order was succusfully placed at server´s stock.", "Order placed.", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
+                //generate share object from datagrid entry
+                Share tmpShare = new Share(tmpShareToBuy.Cells[0].Value.ToString(), tmpShareToBuy.Cells[1].Value.ToString(), tmpShareToBuy.Cells[2].Value.ToString(), tmpShareToBuy.Cells[3].Value.ToString(), tmpShareToBuy.Cells[4].Value.ToString());
+
+                DueOrder tmpDueOrder = new DueOrder(tmpOrder, tmpCustomer, tmpHostURL, tmpShare);
+
                 //if placing the order was successful the order has to be stored for the client application
-                addDueOrderItem(new Tuple<string, string, string>(tmpOrder.orderID.ToString(), tmpCustomer.GUID, tmpHostURL));
+                addDueOrderItem(tmpDueOrder);
 
                 //negative because the customer now has less money available
                 setCustomersEquityByGuid(tmpCustomer.GUID, (-1 * tmpAmount * tmpMaxBuyValue));
@@ -800,7 +883,7 @@ namespace Stock_Application
         /// <summary>
         /// Adds a new due order to local list and DB
         /// </summary>
-        private async void addDueOrderItem(Tuple<string, string, string> tmpTuple)
+        private async void addDueOrderItem(DueOrder tmpTuple)
         {
             //add it to local list
             insertDueList.Add(tmpTuple);
@@ -809,9 +892,29 @@ namespace Stock_Application
             {
                 BsonDocument newEntry = new BsonDocument
             {
-                {"OrderGuid", tmpTuple.Item1 },
-                {"CustomerGuid", tmpTuple.Item2 },
-                {"Host", tmpTuple.Item3 }
+                //Order object
+                {"OrderGuid", tmpTuple.placedOrder.orderID },
+                {"AktienGuid", tmpTuple.placedOrder.aktienID },
+                {"BoughtAmount", tmpTuple.placedOrder.amount },
+                {"PriceLimit", tmpTuple.placedOrder.limit },
+                {"OrderTimestamp", tmpTuple.placedOrder.timestamp },
+                {"OrderHash", tmpTuple.placedOrder.hash },
+
+                //Customer object
+                {"CustomerGuid", tmpTuple.buyingCustomer.GUID},
+                {"CustomerFirstname", tmpTuple.buyingCustomer.Firstname },
+                {"CustomerLastname", tmpTuple.buyingCustomer.Lastname },
+                {"CustomerEquity", tmpTuple.buyingCustomer.Equity },
+                {"CustomerDepotGuid", tmpTuple.buyingCustomer.DepotGuid },
+
+                //Host urls
+                {"HostURL", tmpTuple.hostURL },
+
+                //bought share
+                {"ShareGuid", tmpTuple.boughtShare.GUID },
+                {"ShareName", tmpTuple.boughtShare.Name },
+                {"SharePrice", tmpTuple.boughtShare.Price },
+                {"ShareAmount", tmpTuple.boughtShare.Amount }
             };
                 await db_connection.dueOrderTable.InsertOneAsync(newEntry);
             }

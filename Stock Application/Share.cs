@@ -91,10 +91,5 @@
             this.Amount = tmpAmount;
             this.DepotGUID = tmpDepotGuid;
         }
-
-
-
-
-
     }
 }

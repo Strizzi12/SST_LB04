@@ -91,6 +91,7 @@
     <Compile Include="Customer.cs" />
     <Compile Include="db_connection.cs" />
     <Compile Include="Depot.cs" />
+    <Compile Include="DueOrder.cs" />
     <Compile Include="MainView.cs">
       <SubType>Form</SubType>
     </Compile>

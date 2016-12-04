@@ -530,6 +530,7 @@
             // 
             // 
             this.RootElement.ApplyShapeToControl = true;
+            this.StartPosition = System.Windows.Forms.FormStartPosition.CenterScreen;
             this.Text = "Stock Application";
             this.ThemeName = "Office2013Dark";
             this.tabControl.ResumeLayout(false);
