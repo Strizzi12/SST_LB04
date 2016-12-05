@@ -14,13 +14,20 @@ namespace Stock_Application
         /// <summary>
         /// Constructor with full information
         /// </summary>
-        public DueOrder(Order tmpPlacedOrder, Customer tmpBuyingCustomer, string tmpHostURL, Share tmpBoughtShare)
+        public DueOrder(Order tmpPlacedOrder, Customer tmpBuyingCustomer, string tmpHostURL, Share tmpBoughtShare, bool tmpBuyOrSell)
         {
             placedOrder = tmpPlacedOrder;
             buyingCustomer = tmpBuyingCustomer;
             hostURL = tmpHostURL;
             boughtShare = tmpBoughtShare;
+            BuyOrSell = tmpBuyOrSell;
         }
+
+        /// <summary>
+        /// Indicates if the DueOrder was a Buy- or a Sell-Order
+        /// false = Buy, true = sell
+        /// </summary>
+        public bool BuyOrSell = false;
 
         /// <summary>
         /// Placed order 

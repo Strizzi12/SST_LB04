@@ -80,7 +80,7 @@ namespace Stock_Application
         }
 
         /// <summary>
-        /// Polls for responses
+        /// Polls for responses; Backgroundworker method (No GUI updates can be done here)
         /// </summary>
         private async void pollResponses(object sender, DoWorkEventArgs e)
         {
@@ -125,50 +125,109 @@ namespace Stock_Application
                     int status = int.MinValue;
                     status = evaluateCheckResponse(response).Result;
 
-                    switch (status)
+                    //logic for Buy-Orders
+                    if (!dueOrderItem.BuyOrSell)
                     {
-                        //successful
-                        case 0:
-                            addShareToCustomerDepot(response, dueOrderItem);
-
-                            //if order was processed by stock delete it from dueOrderList
-                            listToRemove.Add(dueOrderItem);
-                            break;
-                        //in progress
-                        case 1:
-                            break;
-                        //denied
-                        case 2:
-                            correctCustomersBalance(response, dueOrderItem);
-
-                            Debug.Print("Order was denied!");
-                            listToRemove.Add(dueOrderItem);
-                            break;
-                        //not enough goods
-                        case 3:
-                            //shares can be added as well (logic for not enough goods is in the addShareToCustomerDepot)
-                            addShareToCustomerDepot(response, dueOrderItem);
-
-                            //but equity of customer has to be correct for not shares which were not available
-                            currectCustomerBalanceNotEnoughGoods(response, dueOrderItem);
-
-                            Debug.Print("Not enough goods for order!");
-                            listToRemove.Add(dueOrderItem);
-                            break;
-                        //wrong price
-                        case 4:
-                            correctCustomersBalance(response, dueOrderItem);
-
-                            Debug.Print("Wrong price for order!");
-                            listToRemove.Add(dueOrderItem);
-                            break;
-                        default:
-                            Debug.Print("Unknown error occured. Status not within the expected range!");
-                            break;
+                        listToRemove = logicBuyOrder(status, response, dueOrderItem, listToRemove);
+                    }
+                    //logic for Sell-Orders
+                    else
+                    {
+                        listToRemove = logicSellOrder(status, response, dueOrderItem, listToRemove);
                     }
                 }
                 Thread.Sleep(10000);
             }
+        }
+
+        /// <summary>
+        /// Contains logic for check of Buy-Orders
+        /// </summary>
+        /// <param name="status"></param>
+        /// <param name="response"></param>
+        /// <param name="dueOrderItem"></param>
+        /// <param name="listToRemove"></param>
+        private List<DueOrder> logicBuyOrder(int status, HttpResponseMessage response, DueOrder dueOrderItem, List<DueOrder> listToRemove)
+        {
+            switch (status)
+            {
+                //successful
+                case 0:
+                    addShareToCustomerDepot(response, dueOrderItem);
+
+                    //if order was processed by stock delete it from dueOrderList
+                    listToRemove.Add(dueOrderItem);
+                    break;
+                //in progress
+                case 1:
+                    break;
+                //denied
+                case 2:
+                    correctCustomersBalance(response, dueOrderItem);
+
+                    Debug.Print("Order was denied!");
+                    listToRemove.Add(dueOrderItem);
+                    break;
+                //not enough goods
+                case 3:
+                    //shares can be added as well (logic for not enough goods is in the addShareToCustomerDepot)
+                    addShareToCustomerDepot(response, dueOrderItem);
+
+                    //but equity of customer has to be correct for not shares which were not available
+                    currectCustomerBalanceNotEnoughGoods(response, dueOrderItem);
+
+                    Debug.Print("Not enough goods for order!");
+                    listToRemove.Add(dueOrderItem);
+                    break;
+                //wrong price
+                case 4:
+                    correctCustomersBalance(response, dueOrderItem);
+
+                    Debug.Print("Wrong price for order!");
+                    listToRemove.Add(dueOrderItem);
+                    break;
+                default:
+                    Debug.Print("Unknown error occured. Status not within the expected range!");
+                    break;
+            }
+            return listToRemove;
+        }
+
+        /// <summary>
+        /// Contains logic for check of Sell-Orders
+        /// </summary>
+        /// <param name="status"></param>
+        /// <param name="response"></param>
+        /// <param name="dueOrderItem"></param>
+        /// <param name="listToRemove"></param>
+        private List<DueOrder> logicSellOrder(int status, HttpResponseMessage response, DueOrder dueOrderItem, List<DueOrder> listToRemove)
+        {
+            switch (status)
+            {
+                //successful
+                case 0:
+
+                    break;
+                //in progress
+                case 1:
+                    break;
+                //denied
+                case 2:
+
+                    break;
+                //not enough goods
+                case 3:
+
+                    break;
+                //wrong price
+                case 4:
+
+                    break;
+                default:
+                    Debug.Print("Unknown error occured. Status not within the expected range!");
+                    break;
+            }
+            return listToRemove;
         }
 
         /// <summary>
@@ -452,7 +511,7 @@ namespace Stock_Application
 
                 Share tmpShare = new Share(dueOrderItem.GetElement("ShareGuid").Value.ToString(), dueOrderItem.GetElement("ShareName").Value.ToString(), dueOrderItem.GetElement("SharePrice").Value.ToString(), dueOrderItem.GetElement("ShareAmount").Value.ToString(), "no data");
 
-                DueOrder tmpDueOrder = new DueOrder(tmpOrder, tmpCustomer, tmpHostURL, tmpShare);
+                DueOrder tmpDueOrder = new DueOrder(tmpOrder, tmpCustomer, tmpHostURL, tmpShare, bool.Parse(dueOrderItem.GetElement("BuyOrSell").Value.ToString()));
 
                 return tmpDueOrder;
             }
@@ -932,7 +991,7 @@ namespace Stock_Application
                 //generate share object from datagrid entry
                 Share tmpShare = new Share(tmpShareToBuy.Cells[0].Value.ToString(), tmpShareToBuy.Cells[1].Value.ToString(), tmpShareToBuy.Cells[2].Value.ToString(), tmpShareToBuy.Cells[3].Value.ToString(), tmpShareToBuy.Cells[4].Value.ToString());
 
-                DueOrder tmpDueOrder = new DueOrder(tmpOrder, tmpCustomer, tmpHostURL, tmpShare);
+                DueOrder tmpDueOrder = new DueOrder(tmpOrder, tmpCustomer, tmpHostURL, tmpShare, false);
 
                 //if placing the order was successful the order has to be stored for the client application
                 addDueOrderItem(tmpDueOrder);
@@ -1023,6 +1082,7 @@ namespace Stock_Application
                 {"PriceLimit", tmpTuple.placedOrder.limit },
                 {"OrderTimestamp", tmpTuple.placedOrder.timestamp },
                 {"OrderHash", tmpTuple.placedOrder.hash },
+                {"BuyOrSell", tmpTuple.BuyOrSell },
 
                 //Customer object
                 {"CustomerGuid", tmpTuple.buyingCustomer.GUID},
@@ -1141,7 +1201,330 @@ namespace Stock_Application
             grdGridCustomers.Refresh();
         }
 
+        /// <summary>
+        /// Starts the sell process of shares
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void btnSellShares_Click(object sender, EventArgs e)
+        {
+            if (grdCustomerDepot.SelectedRows != null)
+            {
+                //single select = true; get share which should be sold
+                GridViewRowInfo shareToSell = grdCustomerDepot.SelectedRows?.First();
+                Share tmpShare = new Share(shareToSell.Cells[0].Value.ToString(), shareToSell.Cells[1].Value.ToString(), shareToSell.Cells[2].Value.ToString(), shareToSell.Cells[3].Value.ToString(), shareToSell.Cells[4].Value.ToString());
 
+                //store the share which should get sold into the tag of tab4 (ensures that the correct share will be used for further steps)
+                tabPage4.Tag = tmpShare;
+
+                initializeTab4();
+                tabControl.SelectedTab = tabPage4;
+            }
+            else
+            {
+                MessageBox.Show("Please select a share you want to sell.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+        }
+
+        /// <summary>
+        /// Sets the required data in tab4
+        /// </summary>
+        private void initializeTab4()
+        {
+            //extract the selected share from tag
+            Share tmpShare = tabPage4.Tag as Share;
+
+            tab4lblShareID.Text = tmpShare.GUID;
+            tab4lblPurchasePrice.Text = String.Format("{0:0.00}", Double.Parse(tmpShare.Price)) + " €";
+            tab4lblShareName.Text = tmpShare.Name;
+            tab4lblAvailableShares.Text = tmpShare.Amount;
+
+            //reset the user inputs
+            tab4DropDown.SelectedIndex = -1;
+            tab4SellAmount.Text = "0";
+            tab4SellPrice.Text = "0,00 €";
+
+            //reset calc values
+            tab4lblNewCusEquity.Text = String.Format("{0:0.00}", 0) + " €";
+            tab4lblProfitLoss.Text = String.Format("{0:0.00}", 0) + " €";
+            tab4lblProfitLossPerShare.Text = String.Format("{0:0.00}", 0) + " €";
+
+            //reset colors of labels
+            tab4lblProfitLossPerShare.ForeColor = System.Drawing.Color.Black;
+            tab4lblProfitLoss.ForeColor = System.Drawing.Color.Black;
+        }
+
+        /// <summary>
+        /// Live value forcast calculation and displaying in labels of tab4
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void tab4SellPrice_TextChanged(object sender, EventArgs e)
+        {
+            try
+            {
+                //extract the selected share from tag
+                Share tmpShare = tabPage4.Tag as Share;
+
+                //get selected Customer object
+                string tmpSelectedCustomerGuid = lblGuid.Text;
+                Customer tmpCustomer = getCustomerByGUID(tmpSelectedCustomerGuid);
+
+                //calc new equity after selling the shares
+                double newEquity = double.MinValue;
+                //"new equity" = "currenct equity" + "amount which should be sold" * "price per sold share"
+                newEquity = double.Parse(tmpCustomer.Equity, System.Globalization.NumberStyles.Any) + (int.Parse(tab4SellAmount.Value.ToString(), System.Globalization.NumberStyles.Any) * double.Parse(tab4SellPrice.Value.ToString(), System.Globalization.NumberStyles.Any));
+                //set the value to the label
+                tab4lblNewCusEquity.Text = String.Format("{0:0.00}", newEquity) + " €";
+
+                //calc profit/loss overall
+                double buyValue = double.MinValue;
+                double sellValue = double.MinValue;
+                double overAllResult = double.MinValue;
+                //"value for which the shares were bought" = "amount of shares that should get sold" * "price for which they were bought"
+                buyValue = int.Parse(tab4SellAmount.Value.ToString(), System.Globalization.NumberStyles.Any) * double.Parse(tmpShare.Price, System.Globalization.NumberStyles.Any);
+                //"value for which the shares should get sold" = "amount of shares that should get sold" * "price for which they should get sold"
+                sellValue = int.Parse(tab4SellAmount.Value.ToString(), System.Globalization.NumberStyles.Any) * double.Parse(tab4SellPrice.Value.ToString(), System.Globalization.NumberStyles.Any);
+                //Win or Loss = "sellValue" - "buyValue"
+                overAllResult = sellValue - buyValue;
+                tab4lblProfitLoss.Text = String.Format("{0:0.00}", overAllResult) + " €";
+                //lbl color according to calc value
+                if (overAllResult < 0)
+                {
+                    tab4lblProfitLoss.ForeColor = System.Drawing.Color.Red;
+                }
+                else
+                {
+                    tab4lblProfitLoss.ForeColor = System.Drawing.Color.GreenYellow;
+                }
+
+                //calc profit/loss per share
+                double perShareResult = double.MinValue;
+                //"win or loss per share" = "value per share when they get sold" - "value per share when they were bought"
+                perShareResult = double.Parse(tab4SellPrice.Value.ToString(), System.Globalization.NumberStyles.Any) - double.Parse(tmpShare.Price, System.Globalization.NumberStyles.Any);
+                tab4lblProfitLossPerShare.Text = String.Format("{0:0.00}", perShareResult) + " €";
+                //lbl color according to calc value
+                if (perShareResult < 0)
+                {
+                    tab4lblProfitLossPerShare.ForeColor = System.Drawing.Color.Red;
+                }
+                else
+                {
+                    tab4lblProfitLossPerShare.ForeColor = System.Drawing.Color.GreenYellow;
+                }
+            }
+            catch (Exception ex)
+            {
+                Debug.Print(ex.Message);
+                tab4lblNewCusEquity.Text = String.Format("{0:0.00}", 0) + " €";
+                tab4lblProfitLoss.Text = String.Format("{0:0.00}", 0) + " €";
+                tab4lblProfitLossPerShare.Text = String.Format("{0:0.00}", 0) + " €";
+                tab4lblProfitLossPerShare.ForeColor = System.Drawing.Color.Black;
+                tab4lblProfitLoss.ForeColor = System.Drawing.Color.Black;
+                return;
+            }
+        }
+
+        /// <summary>
+        /// Submits the sell order if all values are valid
+        /// TODO: Should be reworked, function to long and uses almost the same code as buy order
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private async void submitSellOrder_Click(object sender, EventArgs e)
+        {
+            if (tabPage4.Tag == null)
+            {
+                MessageBox.Show("Please select a share you want to sell.", "Warning", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            if (validateSellOrderData())
+            {
+                //extract the selected share from tag
+                Share tmpShare = tabPage4.Tag as Share;
+
+                //get selected Customer object
+                string tmpSelectedCustomerGuid = lblGuid.Text;
+                Customer tmpCustomer = getCustomerByGUID(tmpSelectedCustomerGuid);
+
+                //reset client object if there is a problem with server and request can not be handled
+                client.CancelPendingRequests();
+                client.Dispose();
+                client = null;
+                client = new HttpClient();
+
+                //getting host url from selected element in dropdown (indizes match so this should work)
+                string tmpHostURL = lstURLs.ElementAt(tab4DropDown.SelectedIndex);
+
+                client.BaseAddress = new Uri(tmpHostURL);
+                client.DefaultRequestHeaders.Accept.Clear();
+                client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+
+                //generate order object to Json serialize it afterwards (parsing to int/double and then back to string gets away the currency sign of text)
+                Order tmpOrder = new Order(Guid.NewGuid().ToString(), tmpShare.GUID, int.Parse(tab4SellAmount.Text, System.Globalization.NumberStyles.Any).ToString(), double.Parse(tab4SellPrice.Text, System.Globalization.NumberStyles.Any).ToString(), string.Empty);
+
+                //generate JSON payload for POST
+                string tmpPayload = Newtonsoft.Json.JsonConvert.SerializeObject(tmpOrder);
+
+                StringContent httpContent = new StringContent(tmpPayload, Encoding.UTF8, "application/json");
+
+                HttpResponseMessage response = null;
+                try
+                {
+                    //execute post to server
+                    response = await client.PostAsync("boerse/sell", httpContent);
+                }
+                catch (Exception)
+                {
+                    MessageBox.Show("Server is not reachable. Please retry alter.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+
+                if (response?.StatusCode == HttpStatusCode.InternalServerError || response == null)
+                {
+                    MessageBox.Show("Internal server error!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+                else
+                {
+                    MessageBox.Show("Order was succusfully placed at server´s stock.", "Order placed.", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    DueOrder tmpDueOrder = new DueOrder(tmpOrder, tmpCustomer, tmpHostURL, tmpShare, true);
+
+                    //if placing the order was successful the order has to be stored for the client application
+                    addDueOrderItem(tmpDueOrder);
+
+                    removeShareFromCustomerDepot(tmpCustomer.GUID, tmpDueOrder);
+
+                    //pos because the customer now has more money available
+                    setCustomerEquityByGuidWithoutGUIUpdate(tmpCustomer.GUID, tmpOrder.amount * tmpOrder.limit);
+
+                    resetTab4();
+                }
+            }
+            else
+            {
+                MessageBox.Show("Invalid data. Cannot send order.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+        }
+
+        /// <summary>
+        /// Corrects the customers depot after shares were sold
+        /// </summary>
+        private void removeShareFromCustomerDepot(string tmpCustomerGUID, DueOrder dueOrder)
+        {
+            try
+            {
+                List<Customer> tmpCusList = new List<Customer>(LstCustomers);
+                Customer tmpCustomer = tmpCusList.Find(x => x.GUID == tmpCustomerGUID);
+                List<Share> tmpDepot = new List<Share>(tmpCustomer.Depot.lstShares);
+
+                int index = tmpDepot.FindIndex(f => f.GUID == dueOrder.boughtShare.GUID);
+
+                //if 0 shares are left after selling them share should be deleted from stock
+                if (int.Parse(tmpDepot[index].Amount, System.Globalization.NumberStyles.Any) == dueOrder.placedOrder.amount)
+                {
+                    //order of removing is important at this point!!!!
+                    //delete tupel from database
+                    var filter = Builders<BsonDocument>.Filter.Eq("GUID", tmpDepot[index].GUID);
+                    db_connection.customerTable.DeleteOne(filter);
+
+                    tmpDepot.Remove(tmpDepot[index]);
+                }
+                //still shares of this type left -> only adjust amount
+                else
+                {
+                    Share tmpShare = new Share(dueOrder.boughtShare.GUID, dueOrder.boughtShare.Name, dueOrder.boughtShare.Price, (int.Parse(tmpDepot[index].Amount, System.Globalization.NumberStyles.Any) - dueOrder.placedOrder.amount).ToString(), tmpDepot[index].prpDeputGuid);
+
+                    //update shares new amount of shares
+                    tmpDepot[index] = tmpShare;
+                    updateShareInDB(tmpShare);
+                }
+
+                //save back changes to local lists
+                tmpCustomer.Depot.lstShares = new BindingList<Share>(tmpDepot);
+                LstCustomers = new BindingList<Customer>(tmpCusList);
+            }
+            catch (Exception ex)
+            {
+                Debug.Print(ex.Message);
+            }
+        }
+
+        /// <summary>
+        /// Validates the data required for sending a valid sell order to server
+        /// </summary>
+        /// <returns></returns>
+        private bool validateSellOrderData()
+        {
+            try
+            {
+                //no stock selected
+                if (tab4DropDown.SelectedIndex < 0)
+                {
+                    MessageBox.Show("Please select a stock market before sending the order.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return false;
+                }
+
+                //price lesser or equal zero makes no sense
+                if (Double.Parse(tab4SellPrice.Text, System.Globalization.NumberStyles.Any) <= 0)
+                {
+                    MessageBox.Show("Please enter a valid price before sending the order.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return false;
+                }
+
+                //amount lesser or equal zero makes no sense
+                if (int.Parse(tab4SellAmount.Text, System.Globalization.NumberStyles.Any) <= 0)
+                {
+                    MessageBox.Show("Please enter a valid amount before sending the order.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return false;
+                }
+
+                //if something went terribly wrong
+                if (tab4lblShareID.Text == string.Empty)
+                {
+                    MessageBox.Show("Please select a share to sell before sending the order.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return false;
+                }
+
+                //cant sell more than he has in his depot
+                if (int.Parse(tab4SellAmount.Text, System.Globalization.NumberStyles.Any) > int.Parse((tabPage4.Tag as Share).Amount, System.Globalization.NumberStyles.Any))
+                {
+                    MessageBox.Show("Please select a valid amount of shares to sell before sending the order.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    return false;
+                }
+            }
+            catch (Exception)
+            {
+                MessageBox.Show("Invalid input data detected.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Resets tab4 after a order was sent
+        /// </summary>
+        private void resetTab4()
+        {
+            //reset the user inputs
+            tab4DropDown.SelectedIndex = -1;
+            tab4SellAmount.Text = "0";
+            tab4SellPrice.Text = "0,00 €";
+
+            //reset calc values
+            tab4lblNewCusEquity.Text = String.Format("{0:0.00}", 0) + " €";
+            tab4lblProfitLoss.Text = String.Format("{0:0.00}", 0) + " €";
+            tab4lblProfitLossPerShare.Text = String.Format("{0:0.00}", 0) + " €";
+
+            //reset colors of labels
+            tab4lblProfitLossPerShare.ForeColor = System.Drawing.Color.Black;
+            tab4lblProfitLoss.ForeColor = System.Drawing.Color.Black;
+
+            tabPage4.Tag = null;
+            tabControl.SelectedTab = tabPage2;
+        }
 
 
     }
