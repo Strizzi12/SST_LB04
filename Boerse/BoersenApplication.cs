@@ -23,8 +23,8 @@ namespace Boerse
 		{
 			Debug.WriteLine("Started!");
 			ServerSettings settings = new ServerSettings();
-			settings.Host = "ec2-35-164-218-97.us-west-2.compute.amazonaws.com";    //93.82.35.63 
-			//settings.Host = "localhost";    //93.82.35.63 
+			//settings.Host = "ec2-35-164-218-97.us-west-2.compute.amazonaws.com";    //93.82.35.63 
+			settings.Host = "localhost";    //93.82.35.63 
 			settings.Port = "8080";
 			insertInitialData();
 			try
@@ -51,7 +51,7 @@ namespace Boerse
 			while(true)
 			{
 				int minutes = 1;
-				Thread.Sleep(1000 * 30 * minutes);
+				Thread.Sleep(1000 * 60 * minutes);
 				//Do work here
 				Console.WriteLine("Starting to process the orders!");
 				//order the limit
@@ -116,7 +116,7 @@ namespace Boerse
 						{
 							double limit = order.receivedOrder.limit;
 							int amount = order.receivedOrder.amount;
-							foreach(KeyVal<double, int, int> item in limitList) //FEHLER!!!
+							foreach(KeyVal<double, int, int> item in limitList)
 							{
 								//Buy
 								if(order.useCase == 0)
@@ -176,35 +176,35 @@ namespace Boerse
 						}
 
 						//Now compare the best amount of buy/sell
-						List<KeyVal<double, int, int>> sortedLimitListBuy = limitList.OrderByDescending(o => o.limit).ToList();
+						List<KeyVal<double, int, int>> sortedLimitList = limitList.OrderByDescending(o => o.limit).ToList();
 
 						//For Memory purposes^^
 						//limitList.Clear();
 
 						//Hier sollen alle Buy und Sell Order von unten bzw. von oben aufgelistet werden.!
 						int count = 1;
-						foreach(var item in sortedLimitListBuy)
+						foreach(var item in sortedLimitList)
 						{
-							for(int i = 0; i < count; i++)
+							for(int i = 0; i < count - 1; i++)	//The last one should add himself up
 							{
-								item.amountSell += sortedLimitListBuy[i].amountSell;
+								item.amountSell += sortedLimitList[i].amountSell;
 							}
 							count++;
 						}
-						int maxCount = sortedLimitListBuy.Count;
-						count = maxCount - 1;
-						foreach(var item in sortedLimitListBuy)
+						int maxCount = sortedLimitList.Count;
+						count = 1;
+						foreach(var item in sortedLimitList)
 						{
-							for(int i = maxCount - 1; i > count - 1; i--)
+							for(int i = count; i < maxCount; i++)
 							{
-								item.amountBuy += sortedLimitListBuy[i].amountBuy;
+								item.amountBuy += sortedLimitList[i].amountBuy;
 							}
-							count--;
+							count++;
 						}
 
 						//Kursfeststellung - here are buy order smaller than sell orders
 						KeyVal<double, int, int> best = new KeyVal<double, int, int>(0, 0, 0);
-						foreach(var item in sortedLimitListBuy)
+						foreach(var item in sortedLimitList)
 						{
 							//Feststellung hier muss amount buy größer als die von best sein
 							if(item.amountSell >= item.amountBuy && best.amountBuy <= item.amountBuy)
@@ -223,47 +223,56 @@ namespace Boerse
 						var result = dbStocks.UpdateOne(filter, update);
 
 						//Check all the orders and update them
-						//Sort them per timestamp
+						//Sort them per timestamp because -> First Come, First Serve
 						List<MainOrder> timestampSortedOrderList = new List<MainOrder>();
 						timestampSortedOrderList = orderList.OrderBy(o => o.receivedOrder.timestamp).ToList();
+						int differenceBetweenBuyAndSell = best.amountSell - best.amountBuy;
 						foreach(var sortedOrder in timestampSortedOrderList)
 						{
 							var quantity = sortedOrder.receivedOrder.amount;
 							//Buy
-							if(sortedOrder.useCase.Equals(BUYORSELL.Buy) && sortedOrder.receivedOrder.limit <= best.limit)
+							if(sortedOrder.useCase.Equals(BUYORSELL.Buy) && sortedOrder.receivedOrder.limit >= best.limit)
 							{
-								if(quantity <= best.amountBuy)
+								if(best.amountBuy > 0)
 								{
 									//Order bearbeiten
-									sortedOrder.statusOfOrder = 0;  //Successfull
-																	//Remaining amount calculation
-									best.amountBuy -= quantity;
+									if(quantity <= best.amountBuy)		//All requested goods can be bought                  
+									{
+										sortedOrder.statusOfOrder = 0;  //Successfull
+										best.amountBuy -= quantity;		//Remaining amount calculation
+									}
+									else//Not all requested goods can be bought
+									{
+										sortedOrder.statusOfOrder = 3;  //Not enough goods
+										sortedOrder.receivedOrder.amount = best.amountBuy;
+										best.amountBuy = 0;
+									}
 								}
 								else
 								{
-									sortedOrder.statusOfOrder = 3;  //Not enough goods
+									sortedOrder.statusOfOrder = 2;  //Denied, because no goods are left to buy
 									sortedOrder.receivedOrder.amount = 0;
 								}
 							}
 							//Sell
-							else if(sortedOrder.useCase.Equals(BUYORSELL.Sell) && sortedOrder.receivedOrder.limit >= best.limit)
+							else if(sortedOrder.useCase.Equals(BUYORSELL.Sell) && sortedOrder.receivedOrder.limit <= best.limit)
 							{
 								if(quantity <= best.amountSell)
 								{
 									//Order bearbeiten
-									sortedOrder.statusOfOrder = 0;  //Successfull
-																	//Remaining amount calculation
-									best.amountSell -= quantity;
+									sortedOrder.statusOfOrder = 0;		//Successfull							
+									best.amountSell -= quantity;		//Remaining amount calculation
 								}
 								else
-								{
-									sortedOrder.statusOfOrder = 3;  //Not enough goods
+								{	//Hier dürfte er beim verkaufen theoretisch nie reinkommen.
+									sortedOrder.statusOfOrder = 3;		//Not enough goods
 									sortedOrder.receivedOrder.amount = 0;
 								}
 							}
-							else if((sortedOrder.useCase.Equals(BUYORSELL.Buy) && sortedOrder.receivedOrder.limit >= best.limit) || (sortedOrder.useCase.Equals(BUYORSELL.Sell) && sortedOrder.receivedOrder.limit <= best.limit))
+							else if((sortedOrder.useCase.Equals(BUYORSELL.Buy) && sortedOrder.receivedOrder.limit <= best.limit) || (sortedOrder.useCase.Equals(BUYORSELL.Sell) && sortedOrder.receivedOrder.limit >= best.limit))
 							{
-								sortedOrder.statusOfOrder = 4;      //Wrong price
+								sortedOrder.statusOfOrder = 4;			//Wrong price
+								sortedOrder.receivedOrder.amount = 0;	//Nothings was sold
 							}
 							else
 							{
@@ -272,7 +281,7 @@ namespace Boerse
 						}
 
 						//Update the remaining amount in the stock database
-						update = Builders<BsonDocument>.Update.Set("amount", best.amountSell);
+						update = Builders<BsonDocument>.Update.Set("amount", differenceBetweenBuyAndSell);
 						result = dbStocks.UpdateOne(filter, update);
 
 						//Update the orders in the database with the updated sorted orderList
