@@ -23,8 +23,8 @@ namespace Boerse
 		{
 			Debug.WriteLine("Started!");
 			ServerSettings settings = new ServerSettings();
-			//settings.Host = "ec2-35-164-218-97.us-west-2.compute.amazonaws.com";    //93.82.35.63 
-			settings.Host = "localhost";    //93.82.35.63 
+			settings.Host = "ec2-35-164-218-97.us-west-2.compute.amazonaws.com";    //93.82.35.63 
+			//settings.Host = "localhost";    //93.82.35.63 
 			settings.Port = "8080";
 			insertInitialData();
 			try
@@ -182,32 +182,55 @@ namespace Boerse
 						//limitList.Clear();
 
 						//Hier sollen alle Buy und Sell Order von unten bzw. von oben aufgelistet werden.!
+						List<KeyVal<double, int, int>> tempList = new List<KeyVal<double, int, int>>();
 						int count = 1;
 						foreach(var item in sortedLimitList)
 						{
-							for(int i = 0; i < count - 1; i++)	//The last one should add himself up
+							KeyVal<double, int, int> tempKeyVal = new KeyVal<double, int, int>(0, 0, 0);
+							for(int i = 0; i < count; i++)	//The last one should add himself up
 							{
-								item.amountSell += sortedLimitList[i].amountSell;
+								tempKeyVal.amountBuy += sortedLimitList[i].amountBuy;
 							}
+							tempKeyVal.limit = item.limit;
+							tempList.Add(tempKeyVal);
 							count++;
 						}
+						
 						int maxCount = sortedLimitList.Count;
-						count = 1;
+						count = 0;
+						bool limitFound = false;
 						foreach(var item in sortedLimitList)
 						{
+							KeyVal<double, int, int> tempKeyVal = new KeyVal<double, int, int>(0, 0, 0);
 							for(int i = count; i < maxCount; i++)
 							{
-								item.amountBuy += sortedLimitList[i].amountBuy;
+								tempKeyVal.amountSell += sortedLimitList[i].amountSell;
+							}
+							foreach(var temp in tempList)
+							{
+								if(item.limit == temp.limit)
+								{
+									temp.amountSell = tempKeyVal.amountSell;
+									limitFound = true;
+									break;
+								}
+							}
+							if(!limitFound)
+							{
+								tempKeyVal.limit = item.limit;
+								tempList.Add(tempKeyVal);
 							}
 							count++;
 						}
+
+						sortedLimitList = tempList;
 
 						//Kursfeststellung - here are buy order smaller than sell orders
 						KeyVal<double, int, int> best = new KeyVal<double, int, int>(0, 0, 0);
 						foreach(var item in sortedLimitList)
 						{
 							//Feststellung hier muss amount buy größer als die von best sein
-							if(item.amountSell >= item.amountBuy && best.amountBuy <= item.amountBuy)
+							if(item.amountSell >= item.amountBuy && best.amountBuy <= item.amountBuy && best.limit <= item.limit)
 							{
 								best = item;
 							}
