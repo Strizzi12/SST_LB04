@@ -155,8 +155,12 @@ namespace Stock_Application
                 case 0:
                     addShareToCustomerDepot(response, dueOrderItem);
 
+                    //Even if the order was a full success the price might have been different to the given limit of the order
+                    correctCustomersBalanceSuccessfull(response, dueOrderItem);
+
                     //if order was processed by stock delete it from dueOrderList
                     listToRemove.Add(dueOrderItem);
+                    Debug.Print("Buy: Order Successfull!");
                     break;
                 //in progress
                 case 1:
@@ -165,7 +169,7 @@ namespace Stock_Application
                 case 2:
                     correctCustomersBalance(response, dueOrderItem);
 
-                    Debug.Print("Order was denied!");
+                    Debug.Print("Buy: Order was denied!");
                     listToRemove.Add(dueOrderItem);
                     break;
                 //not enough goods
@@ -174,20 +178,20 @@ namespace Stock_Application
                     addShareToCustomerDepot(response, dueOrderItem);
 
                     //but equity of customer has to be correct for not shares which were not available
-                    currectCustomerBalanceNotEnoughGoods(response, dueOrderItem);
+                    correctCustomerBalanceNotEnoughGoods(response, dueOrderItem);
 
-                    Debug.Print("Not enough goods for order!");
+                    Debug.Print("Buy: Not enough goods for order!");
                     listToRemove.Add(dueOrderItem);
                     break;
                 //wrong price
                 case 4:
                     correctCustomersBalance(response, dueOrderItem);
 
-                    Debug.Print("Wrong price for order!");
+                    Debug.Print("Buy: Wrong price for order!");
                     listToRemove.Add(dueOrderItem);
                     break;
                 default:
-                    Debug.Print("Unknown error occured. Status not within the expected range!");
+                    Debug.Print("Buy: Unknown error occured. Status not within the expected range!");
                     break;
             }
             return listToRemove;
@@ -206,22 +210,33 @@ namespace Stock_Application
             {
                 //successful
                 case 0:
+                    correctCustomerBalanaceSellSuccessful(response, dueOrderItem);
 
+                    listToRemove.Add(dueOrderItem);
+                    Debug.Print("Sell: Order Successfull!");
                     break;
                 //in progress
                 case 1:
                     break;
                 //denied
                 case 2:
-
+                    listToRemove.Add(dueOrderItem);
+                    Debug.Print("Sell: Order denied!");
                     break;
                 //not enough goods
                 case 3:
-
+                    listToRemove.Add(dueOrderItem);
+                    Debug.Print("Sell: Not enough goods!");
                     break;
                 //wrong price
                 case 4:
+                    correctCustomerBalanaceSellWrongPrice(response, dueOrderItem);
 
+                    //add the shares to customers depot again
+                    addShareToCustomerDepot(response, dueOrderItem);
+
+                    listToRemove.Add(dueOrderItem);
+                    Debug.Print("Sell: Wrong price!");
                     break;
                 default:
                     Debug.Print("Unknown error occured. Status not within the expected range!");
@@ -231,11 +246,52 @@ namespace Stock_Application
         }
 
         /// <summary>
+        /// Corrects the customers equity after a wrong price sell at the stock
+        /// </summary>
+        private void correctCustomerBalanaceSellWrongPrice(HttpResponseMessage response, DueOrder dueOrderItem)
+        {
+            //bindinglist is not nice for searching
+            List<Customer> tmpCusList = new List<Customer>(LstCustomers);
+
+            //is precise bc guid is unique
+            Customer tmpCustomer = tmpCusList.Find(x => x.GUID == dueOrderItem.buyingCustomer.GUID);
+
+            //"customer equity" = "current customer equity" - "amount customer wanted to sell" * "min. value he wanted to sell a share"
+            tmpCustomer.Equity = (double.Parse(tmpCustomer.Equity, System.Globalization.NumberStyles.Any) - (dueOrderItem.placedOrder.amount * dueOrderItem.placedOrder.limit)).ToString();
+
+            //update customer in DB
+            updateCustomerInDB(tmpCustomer);
+
+            LstCustomers = new BindingList<Customer>(tmpCusList);
+        }
+
+        /// <summary>
+        /// Corrects the customers equity after a successfull sell at the stock
+        /// </summary>
+        private void correctCustomerBalanaceSellSuccessful(HttpResponseMessage response, DueOrder dueOrderItem)
+        {
+            //bindinglist is not nice for searching
+            List<Customer> tmpCusList = new List<Customer>(LstCustomers);
+
+            //is precise bc guid is unique
+            Customer tmpCustomer = tmpCusList.Find(x => x.GUID == dueOrderItem.buyingCustomer.GUID);
+
+            //first "amount cus wanted to sell" also could be the amount of server response but should always be the same as the amount in order -> makes it more stabel if server sends something wrong
+            //"corrected customer equity" = "current customer equity" + "amount cus wanted to sell" * "price he rly sold it" - "amount cus wanted to sell" * "min value he wanted to sell it"
+            tmpCustomer.Equity = (double.Parse(tmpCustomer.Equity, System.Globalization.NumberStyles.Any) + ((dueOrderItem.placedOrder.amount * double.Parse(getPropertyFromResponse(response, "price").Result)) - (dueOrderItem.placedOrder.amount * dueOrderItem.placedOrder.limit))).ToString();
+
+            //update customer in DB
+            updateCustomerInDB(tmpCustomer);
+
+            LstCustomers = new BindingList<Customer>(tmpCusList);
+        }
+
+        /// <summary>
         /// Correction if not all of the goods were bought
         /// </summary>
         /// <param name="response"></param>
         /// <param name="dueOrderItem"></param>
-        private void currectCustomerBalanceNotEnoughGoods(HttpResponseMessage response, DueOrder dueOrderItem)
+        private void correctCustomerBalanceNotEnoughGoods(HttpResponseMessage response, DueOrder dueOrderItem)
         {
             //bindinglist is not nice for searching
             List<Customer> tmpCusList = new List<Customer>(LstCustomers);
@@ -245,6 +301,28 @@ namespace Stock_Application
 
             //calcs the equity: "current equity" + ("amount user wanted to buy" - "amount user actually bought") * "price per share"
             tmpCustomer.Equity = (double.Parse(tmpCustomer.Equity, System.Globalization.NumberStyles.Any) + ((dueOrderItem.placedOrder.amount - int.Parse(getPropertyFromResponse(response, "amount").Result)) * dueOrderItem.placedOrder.limit)).ToString();
+
+            //update customer in DB
+            updateCustomerInDB(tmpCustomer);
+
+            LstCustomers = new BindingList<Customer>(tmpCusList);
+        }
+
+        /// <summary>
+        /// Corrects the customers balance if a order was not completed successfully
+        /// </summary>
+        private void correctCustomersBalanceSuccessfull(HttpResponseMessage response, DueOrder dueOrderItem)
+        {
+            //bindinglist is not nice for searching
+            List<Customer> tmpCusList = new List<Customer>(LstCustomers);
+
+            //is precise bc guid is unique
+            Customer tmpCustomer = tmpCusList.Find(x => x.GUID == dueOrderItem.buyingCustomer.GUID);
+
+            tmpCustomer.Equity = (double.Parse(tmpCustomer.Equity, System.Globalization.NumberStyles.Any) + ((dueOrderItem.placedOrder.amount * dueOrderItem.placedOrder.limit) - (dueOrderItem.placedOrder.amount * double.Parse(getPropertyFromResponse(response, "price").Result)))).ToString();
+
+            //also correct the equity of customer in DB
+            updateCustomerInDB(tmpCustomer);
 
             LstCustomers = new BindingList<Customer>(tmpCusList);
         }
@@ -261,6 +339,9 @@ namespace Stock_Application
             Customer tmpCustomer = tmpCusList.Find(x => x.GUID == dueOrderItem.buyingCustomer.GUID);
 
             tmpCustomer.Equity = (double.Parse(tmpCustomer.Equity, System.Globalization.NumberStyles.Any) + (dueOrderItem.placedOrder.amount * dueOrderItem.placedOrder.limit)).ToString();
+
+            //also correct the equity of customer in DB
+            updateCustomerInDB(tmpCustomer);
 
             LstCustomers = new BindingList<Customer>(tmpCusList);
         }
@@ -1296,7 +1377,7 @@ namespace Stock_Application
                 }
                 else
                 {
-                    tab4lblProfitLoss.ForeColor = System.Drawing.Color.GreenYellow;
+                    tab4lblProfitLoss.ForeColor = System.Drawing.Color.Green;
                 }
 
                 //calc profit/loss per share
@@ -1311,7 +1392,7 @@ namespace Stock_Application
                 }
                 else
                 {
-                    tab4lblProfitLossPerShare.ForeColor = System.Drawing.Color.GreenYellow;
+                    tab4lblProfitLossPerShare.ForeColor = System.Drawing.Color.Green;
                 }
             }
             catch (Exception ex)
