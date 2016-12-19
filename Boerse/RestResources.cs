@@ -158,9 +158,10 @@ public class BoersenResource
 					responseOrder.orderID = deserializedOrderID;
 					responseOrder.status = deserializedStatusOfOrder;
 					responseOrder.amount = deserializedAmount;
-					responseOrder.price = course;
+					responseOrder.price = deserializedLimit;
 					string response = JsonConvert.SerializeObject(responseOrder);
 
+					response.Replace("state", "status");
 					//Send back a response
 					context.Response.ContentType = Grapevine.Shared.ContentType.JSON;
 					context.Response.ContentEncoding = Encoding.UTF8;
@@ -225,7 +226,7 @@ public class BoersenResource
 					{"amount", mainOrder.receivedOrder.amount},
 					{"limit", mainOrder.receivedOrder.limit},
 					{"timestamp", mainOrder.receivedOrder.timestamp},
-					{"hash", mainOrder.receivedOrder.hash},
+					{"hash", mainOrder.receivedOrder.hash ?? ""},
 					{"useCase", mainOrder.useCase},
 					{"statusOfOrder", mainOrder.statusOfOrder}
 				};

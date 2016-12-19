@@ -24,7 +24,7 @@ namespace Boerse
 			Debug.WriteLine("Started!");
 			ServerSettings settings = new ServerSettings();
 			settings.Host = "ec2-35-164-218-97.us-west-2.compute.amazonaws.com";    //93.82.35.63 
-			//settings.Host = "localhost";    //93.82.35.63 
+																					//settings.Host = "localhost";    //78.104.199.75
 			settings.Port = "8080";
 			insertInitialData();
 			try
@@ -187,7 +187,7 @@ namespace Boerse
 						foreach(var item in sortedLimitList)
 						{
 							KeyVal<double, int, int> tempKeyVal = new KeyVal<double, int, int>(0, 0, 0);
-							for(int i = 0; i < count; i++)	//The last one should add himself up
+							for(int i = 0; i < count; i++)  //The last one should add himself up
 							{
 								tempKeyVal.amountBuy += sortedLimitList[i].amountBuy;
 							}
@@ -195,7 +195,7 @@ namespace Boerse
 							tempList.Add(tempKeyVal);
 							count++;
 						}
-						
+
 						int maxCount = sortedLimitList.Count;
 						count = 0;
 						bool limitFound = false;
@@ -227,14 +227,40 @@ namespace Boerse
 
 						//Kursfeststellung - here are buy order smaller than sell orders
 						KeyVal<double, int, int> best = new KeyVal<double, int, int>(0, 0, 0);
+						int bestMin = 0;
 						foreach(var item in sortedLimitList)
 						{
 							//Feststellung hier muss amount buy größer als die von best sein
-							if(item.amountSell >= item.amountBuy && best.amountBuy <= item.amountBuy && best.limit <= item.limit)
+							int min = Math.Min(item.amountBuy, item.amountSell);
+							if(min > bestMin)
 							{
+								bestMin = min;
 								best = item;
 							}
+
+							/*
+							//Feststellung hier muss amount buy größer als die von best sein
+							if(item.amountSell >= item.amountBuy && best.amountBuy <= item.amountBuy && best.limit <= item.limit)
+							{
+								//if(item.amountBuy != 0 && item.amountSell > best.amountSell)
+									best = item;
+							}*/
 						}
+						int bestMax = 0;
+						if(bestMin == 0)
+						{
+							foreach(var item in sortedLimitList)
+							{
+								//Feststellung hier muss amount buy größer als die von best sein
+								int max = Math.Max(item.amountBuy, item.amountSell);
+								if(max > bestMax)
+								{
+									bestMax = max;
+									best = item;
+								}
+							}
+						}
+
 						//For Memory purposes^^
 						//sortedLimitListBuy.Clear();
 
@@ -256,19 +282,19 @@ namespace Boerse
 							//Buy
 							if(sortedOrder.useCase.Equals(BUYORSELL.Buy) && sortedOrder.receivedOrder.limit >= best.limit)
 							{
-								if(best.amountBuy > 0)
+								if(best.amountSell > 0)
 								{
 									//Order bearbeiten
-									if(quantity <= best.amountBuy)		//All requested goods can be bought                  
+									if(quantity <= best.amountSell)      //All requested goods can be bought                  
 									{
 										sortedOrder.statusOfOrder = 0;  //Successfull
-										best.amountBuy -= quantity;		//Remaining amount calculation
+										best.amountSell -= quantity;     //Remaining amount calculation
 									}
 									else//Not all requested goods can be bought
 									{
 										sortedOrder.statusOfOrder = 3;  //Not enough goods
-										sortedOrder.receivedOrder.amount = best.amountBuy;
-										best.amountBuy = 0;
+										sortedOrder.receivedOrder.amount = best.amountSell;
+										best.amountSell = 0;
 									}
 								}
 								else
@@ -280,22 +306,25 @@ namespace Boerse
 							//Sell
 							else if(sortedOrder.useCase.Equals(BUYORSELL.Sell) && sortedOrder.receivedOrder.limit <= best.limit)
 							{
+								sortedOrder.statusOfOrder = 0;      //Successfull	
+								/*
 								if(quantity <= best.amountSell)
 								{
 									//Order bearbeiten
-									sortedOrder.statusOfOrder = 0;		//Successfull							
-									best.amountSell -= quantity;		//Remaining amount calculation
+									//sortedOrder.statusOfOrder = 0;      //Successfull							
+									//best.amountSell -= quantity;        //Remaining amount calculation
 								}
 								else
-								{	//Hier dürfte er beim verkaufen theoretisch nie reinkommen.
-									sortedOrder.statusOfOrder = 3;		//Not enough goods
+								{   //Hier dürfte er beim verkaufen theoretisch nie reinkommen.
+									sortedOrder.statusOfOrder = 3;      //Not enough goods
 									sortedOrder.receivedOrder.amount = 0;
-								}
+								}*/
 							}
-							else if((sortedOrder.useCase.Equals(BUYORSELL.Buy) && sortedOrder.receivedOrder.limit <= best.limit) || (sortedOrder.useCase.Equals(BUYORSELL.Sell) && sortedOrder.receivedOrder.limit >= best.limit))
+							else if((sortedOrder.useCase.Equals(BUYORSELL.Buy) && sortedOrder.receivedOrder.limit <= best.limit) 
+								|| (sortedOrder.useCase.Equals(BUYORSELL.Sell) && sortedOrder.receivedOrder.limit >= best.limit))
 							{
-								sortedOrder.statusOfOrder = 4;			//Wrong price
-								sortedOrder.receivedOrder.amount = 0;	//Nothings was sold
+								sortedOrder.statusOfOrder = 4;          //Wrong price
+								sortedOrder.receivedOrder.amount = 0;   //Nothings was sold
 							}
 							else
 							{
@@ -304,7 +333,7 @@ namespace Boerse
 						}
 
 						//Update the remaining amount in the stock database
-						update = Builders<BsonDocument>.Update.Set("amount", differenceBetweenBuyAndSell);
+						update = Builders<BsonDocument>.Update.Set("amount", best.amountSell);
 						result = dbStocks.UpdateOne(filter, update);
 
 						//Update the orders in the database with the updated sorted orderList
@@ -318,7 +347,7 @@ namespace Boerse
 								{
 									//var order_id = order.GetElement("_id").Value.ToString();
 									var orderFilter = Builders<BsonDocument>.Filter.Eq("orderID", item.receivedOrder.orderID.ToString());
-									var orderUpdate = Builders<BsonDocument>.Update.Set("amount", item.receivedOrder.amount).Set("statusOfOrder", item.statusOfOrder);
+									var orderUpdate = Builders<BsonDocument>.Update.Set("amount", item.receivedOrder.amount).Set("statusOfOrder", item.statusOfOrder).Set("limit", best.limit);
 									var orderResult = dbOrders.UpdateOne(orderFilter, orderUpdate);
 									break;
 								}
